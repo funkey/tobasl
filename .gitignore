@@ -1,0 +1,6 @@
+build
+*.sw[pmno]
+.cproject
+.project
+.ycm*
+CMakeFiles
