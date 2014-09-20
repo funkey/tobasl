@@ -8,7 +8,6 @@ Slices::Slices() :
 Slices::Slices(const Slices& other) :
 	pipeline::Data(),
 	_slices(other._slices),
-	_conflicts(other._conflicts),
 	_adaptor(0),
 	_kdTree(0),
 	_kdTreeDirty(true) {}
@@ -27,7 +26,6 @@ Slices::operator=(const Slices& other) {
 	_kdTreeDirty = true;
 
 	_slices = other._slices;
-	_conflicts = other._conflicts;
 
 	return *this;
 }
@@ -45,7 +43,6 @@ void
 Slices::clear() {
 
 	_slices.clear();
-	_conflicts.clear();
 }
 
 void

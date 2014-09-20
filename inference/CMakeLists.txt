@@ -1,1 +1,1 @@
-define_module(inference OBJECT LINKS pipeline gurobi)
+define_module(inference OBJECT LINKS imageprocessing pipeline gurobi)

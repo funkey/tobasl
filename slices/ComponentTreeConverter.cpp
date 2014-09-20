@@ -3,7 +3,7 @@
 static logger::LogChannel componenttreeconverterlog("componenttreeconverterlog", "[ComponentTreeConverter] ");
 
 ComponentTreeConverter::ComponentTreeConverter(unsigned int section) :
-	_slices(new Slices()),
+	_slices(new SlicesTree()),
 	_conflictSets(new ConflictSets()),
 	_section(section) {
 
@@ -53,13 +53,15 @@ ComponentTreeConverter::convert() {
 void
 ComponentTreeConverter::visitNode(boost::shared_ptr<ComponentTree::Node> node) {
 
+	LOG_DEBUG(componenttreeconverterlog) << "visiting a node" << std::endl;
+
 	unsigned int sliceId = getNextSliceId();
 
 	_path.push_back(sliceId);
 
 	boost::shared_ptr<ConnectedComponent> component = node->getComponent();
 
-	_slices->add(boost::make_shared<Slice>(sliceId, _section, component));
+	_slices->addChild(boost::make_shared<Slice>(sliceId, _section, component));
 
 	LOG_ALL(componenttreeconverterlog) << "extracted a slice at " << component->getCenter() << std::endl;
 
@@ -71,7 +73,11 @@ ComponentTreeConverter::visitNode(boost::shared_ptr<ComponentTree::Node> node) {
 void
 ComponentTreeConverter::leaveNode(boost::shared_ptr<ComponentTree::Node>) {
 
+	LOG_DEBUG(componenttreeconverterlog) << "leaving a node" << std::endl;
+
 	_path.pop_back();
+
+	_slices->leaveChild();
 }
 
 void
@@ -85,8 +91,6 @@ ComponentTreeConverter::addConflictSet() {
 		conflictSet.addSlice(sliceId);
 
 	_conflictSets->add(conflictSet);
-
-	_slices->addConflicts(_path);
 }
 
 unsigned int ComponentTreeConverter::NextSliceId = 0;

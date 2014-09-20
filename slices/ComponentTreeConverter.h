@@ -9,7 +9,7 @@
 #include <pipeline/all.h>
 #include <imageprocessing/ComponentTree.h>
 #include "ConflictSets.h"
-#include "Slices.h"
+#include "SlicesTree.h"
 
 /**
  * Converts a component tree into a set of Slices and creates conflict sets for 
@@ -66,7 +66,7 @@ private:
 	void convert();
 
 	pipeline::Input<ComponentTree> _componentTree;
-	pipeline::Output<Slices>       _slices;
+	pipeline::Output<SlicesTree>   _slices;
 	pipeline::Output<ConflictSets> _conflictSets;
 
 	// the path to the currently visited component

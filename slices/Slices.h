@@ -124,42 +124,6 @@ public:
 	 */
 	void remove(boost::shared_ptr<Slice> slice);
 
-	/**
-	 * Add information about conflicting slices, e.g., slices that are
-	 * overlapping in space.
-	 *
-	 * @param conflicting A vector of slice ids that are mutually in conflict.
-	 */
-	template <typename Collection>
-	void addConflicts(const Collection& conflicts) {
-
-		foreach (unsigned int id, conflicts) {
-
-			_conflicts[id].reserve(_conflicts[id].size() + conflicts.size() - 1);
-
-			foreach (unsigned int otherId, conflicts)
-				if (id != otherId)
-					_conflicts[id].push_back(otherId);
-		}
-	}
-
-	/**
-	 * Check, whether to slices (given by their id) are in conflict.
-	 */
-	inline bool areConflicting(unsigned int id1, unsigned int id2) {
-
-		// If we don't have any information about slice id1,
-		// we assume that there is no conflict.
-		if (!_conflicts.count(id1))
-			return false;
-
-		foreach (unsigned int conflictId, _conflicts[id1])
-			if (conflictId == id2)
-				return true;
-
-		return false;
-	}
-
 	const const_iterator begin() const { return _slices.begin(); }
 
 	iterator begin() { return _slices.begin(); }
@@ -186,9 +150,6 @@ private:
 
 	// the slices
 	slices_type _slices;
-
-	// map from ids of slices to all ids of conflicting slices
-	std::map<unsigned int, std::vector<unsigned int> > _conflicts;
 
 	// nanoflann vector adaptor
 	SliceVectorAdaptor* _adaptor;

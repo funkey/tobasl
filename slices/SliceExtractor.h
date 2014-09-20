@@ -37,11 +37,6 @@ public:
 
 private:
 
-	void onInputSet(const pipeline::InputSetBase& signal);
-
-	// optional mser parameters to override the program options
-	pipeline::Input<MserParameters> _mserParameters;
-
 	void extractSlices();
 
 	boost::shared_ptr<Mser<Precision> >         _mser;
