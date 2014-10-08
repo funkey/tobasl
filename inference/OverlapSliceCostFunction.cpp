@@ -1,6 +1,7 @@
 #include "OverlapSliceCostFunction.h"
 
-OverlapSliceCostFunction::OverlapSliceCostFunction() {
+OverlapSliceCostFunction::OverlapSliceCostFunction() :
+		_overlap(false /* don't normalize */, false /* don't align */) {
 
 	registerInput(_groundTruth, "ground truth");
 	registerInput(_slices, "slices");
@@ -15,10 +16,10 @@ OverlapSliceCostFunction::updateOutputs() {
 
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 
-		double maxOverlap = computeMaxGroundTruthOverlap(*slice);
+		double score = computeMaxGroundTruthOverlap(*slice);
 
 		// get a reward for maximizing overlap
-		_costs->setCosts(slice->getId(), -maxOverlap);
+		_costs->setCosts(slice->getId(), score);
 	}
 }
 
@@ -27,13 +28,27 @@ OverlapSliceCostFunction::computeMaxGroundTruthOverlap(const Slice& slice) {
 
 	double maxOverlap = 0;
 
+	boost::shared_ptr<Slice> maxOverlapGtSlice;
+
+	// find the slice with max overlap
 	foreach (boost::shared_ptr<Slice> gtSlice, *_groundTruth) {
 
 		double overlap = _overlap(slice, *gtSlice);
 
-		if (overlap > maxOverlap)
-			maxOverlap = overlap;
+		if (overlap > maxOverlap) {
+
+			maxOverlap        = overlap;
+			maxOverlapGtSlice = gtSlice;
+		}
 	}
 
-	return maxOverlap*maxOverlap;
+	// compute the set difference
+	double setDifference;
+
+	if (maxOverlapGtSlice)
+		setDifference = slice.getComponent()->getSize() + maxOverlapGtSlice->getComponent()->getSize() - 2*maxOverlap;
+	else
+		setDifference = slice.getComponent()->getSize();
+
+	return setDifference - maxOverlap;
 }
