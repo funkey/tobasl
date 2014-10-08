@@ -23,6 +23,9 @@
 #include <inference/LinearSolver.h>
 #include <inference/Reconstructor.h>
 
+// debug
+#include <vigra/impex.hxx>
+
 using namespace logger;
 
 util::ProgramOption optionMergeTreeImage(
@@ -115,6 +118,29 @@ int main(int optionc, char** optionv) {
 			// show the best effort solution
 			solutionWriter->setInput("solution", bestEffortReconstructor->getOutput());
 			solutionWriter->write();
+
+			// debug output
+
+			pipeline::Value<Slices> slices = sliceExtractor->getOutput("slices");
+
+			foreach (boost::shared_ptr<Slice> slice, *slices) {
+
+
+				if (slice->getComponent()->getCenter().x >= 234 &&
+				    slice->getComponent()->getCenter().x <= 260 &&
+				    slice->getComponent()->getCenter().y >= 60 &&
+				    slice->getComponent()->getCenter().y <= 78)
+					std::cout << "suspicous slice: " << slice->getId() << std::endl;
+
+				std::string imageFilename = "slices/slice_" + boost::lexical_cast<std::string>(slice->getId()) + ".png";
+
+				const ConnectedComponent::bitmap_type& bitmap = slice->getComponent()->getBitmap();
+
+				// store the image
+				vigra::exportImage(
+						vigra::srcImageRange(bitmap),
+						vigra::ImageExportInfo(imageFilename.c_str()));
+			}
 
 		} else {
 
