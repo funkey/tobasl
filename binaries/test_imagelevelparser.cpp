@@ -7,6 +7,12 @@
 
 #include <imageprocessing/io/ImageReader.h>
 #include <imageprocessing/ComponentTreeExtractor.h>
+#include <imageprocessing/ComponentTreeDownSampler.h>
+#include <imageprocessing/gui/ComponentTreeView.h>
+
+#include <gui/RotateView.h>
+#include <gui/ZoomView.h>
+#include <gui/Window.h>
 
 using namespace logger;
 
@@ -40,6 +46,21 @@ int main(int optionc, char** optionv) {
 		pipeline::Value<ComponentTree> componentTree = componentTreeExtractor->getOutput("component tree");
 
 		std::cout << "extracted " << componentTree->size() << " components" << std::endl;
+
+		pipeline::Process<ComponentTreeDownSampler> downsampler;
+
+		pipeline::Process<ComponentTreeView> componentTreeView;
+		pipeline::Process<gui::RotateView>   rotateView;
+		pipeline::Process<gui::ZoomView>     zoomView;
+		pipeline::Process<gui::Window>       window("imagelevelparser");
+
+		downsampler->setInput(componentTreeExtractor->getOutput());
+		componentTreeView->setInput(downsampler->getOutput());
+		rotateView->setInput(componentTreeView->getOutput());
+		zoomView->setInput(rotateView->getOutput());
+		window->setInput(zoomView->getOutput());
+
+		window->processEvents();
 
 	} catch (Exception& e) {
 
