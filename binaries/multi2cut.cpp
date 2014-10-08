@@ -61,7 +61,7 @@ int main(int optionc, char** optionv) {
 		LOG_USER(out) << "[main] starting..." << std::endl;
 
 		pipeline::Process<ImageReader>                    imageReader(optionMergeTreeImage.as<std::string>());
-		pipeline::Process<SliceExtractor<unsigned char> > sliceExtractor(0, false);
+		pipeline::Process<SliceExtractor<unsigned char> > sliceExtractor(0, true /* downsample */);
 		pipeline::Process<FeatureExtractor>               featureExtractor;
 
 		pipeline::Value<Image> image = imageReader->getOutput();
