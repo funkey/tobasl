@@ -11,7 +11,6 @@
 #include <util/helpers.hpp>
 
 #include <imageprocessing/io/ImageReader.h>
-#include <imageprocessing/MserParameters.h>
 #include <slices/SliceExtractor.h>
 #include <features/FeatureExtractor.h>
 #include <io/LearningProblemWriter.h>

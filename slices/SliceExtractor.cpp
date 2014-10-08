@@ -2,7 +2,7 @@
 #include <imageprocessing/ComponentTree.h>
 #include <imageprocessing/ComponentTreeDownSampler.h>
 #include <imageprocessing/ComponentTreePruner.h>
-#include <imageprocessing/Mser.h>
+#include <imageprocessing/ComponentTreeExtractor.h>
 #include <pipeline/Value.h>
 #include "ComponentTreeConverter.h"
 #include "SliceExtractor.h"
@@ -31,22 +31,20 @@ util::ProgramOption optionMaxSliceMerges(
 
 template <typename Precision>
 SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample) :
-	_mser(boost::make_shared<Mser<Precision> >()),
-	_defaultMserParameters(boost::make_shared<MserParameters>()),
+	_componentTreeExtractor(boost::make_shared<ComponentTreeExtractor<Precision> >()),
+	_defaultComponentTreeExtractorParameters(boost::make_shared<ComponentTreeExtractorParameters>()),
 	_downSampler(boost::make_shared<ComponentTreeDownSampler>()),
 	_pruner(boost::make_shared<ComponentTreePruner>()),
 	_converter(boost::make_shared<ComponentTreeConverter>(section)) {
 
-	registerInput(_mser->getInput("image"), "membrane");
+	registerInput(_componentTreeExtractor->getInput("image"), "membrane");
 	registerOutput(_converter->getOutput("slices"), "slices");
 	registerOutput(_converter->getOutput("conflict sets"), "conflict sets");
 
-	// set default mser parameters from program options
-	_defaultMserParameters->darkToBright =  optionInvertSliceMaps;
-	_defaultMserParameters->brightToDark = !optionInvertSliceMaps;
-	_defaultMserParameters->minArea      =  optionMinSliceSize;
-	_defaultMserParameters->maxArea      =  optionMaxSliceSize;
-	_defaultMserParameters->alwaysStable =  true;
+	// set default componentTreeExtractor parameters from program options
+	_defaultComponentTreeExtractorParameters->darkToBright =  optionInvertSliceMaps;
+	_defaultComponentTreeExtractorParameters->minSize      =  optionMinSliceSize;
+	_defaultComponentTreeExtractorParameters->maxSize      =  optionMaxSliceSize;
 
 	LOG_DEBUG(sliceextractorlog)
 			<< "extracting slices with min size " << optionMinSliceSize.as<int>()
@@ -55,16 +53,16 @@ SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample)
 			<< std::endl;
 
 	// setup internal pipeline
-	_mser->setInput("parameters", _defaultMserParameters);
+	_componentTreeExtractor->setInput("parameters", _defaultComponentTreeExtractorParameters);
 
 	if (downsample) {
 
-		_downSampler->setInput(_mser->getOutput());
+		_downSampler->setInput(_componentTreeExtractor->getOutput());
 		_pruner->setInput("component tree", _downSampler->getOutput());
 
 	} else {
 
-		_pruner->setInput("component tree", _mser->getOutput());
+		_pruner->setInput("component tree", _componentTreeExtractor->getOutput());
 	}
 	_pruner->setInput("max height", pipeline::Value<int>(optionMaxSliceMerges.as<int>()));
 	_converter->setInput(_pruner->getOutput());

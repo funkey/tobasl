@@ -8,15 +8,15 @@
 #include <pipeline/all.h>
 #include <inference/LinearConstraints.h>
 #include <imageprocessing/ComponentTree.h>
-#include <imageprocessing/MserParameters.h>
+#include <imageprocessing/ComponentTreeExtractorParameters.h>
 #include "Slices.h"
 
 // forward declaration
 class ComponentTreeDownSampler;
 class ComponentTreePruner;
 class ComponentTreeConverter;
-template <typename Precision> class Mser;
-class MserParameters;
+template <typename Precision> class ComponentTreeExtractor;
+class ComponentTreeExtractorParameters;
 
 template <typename Precision>
 class SliceExtractor : public pipeline::ProcessNode {
@@ -39,11 +39,11 @@ private:
 
 	void extractSlices();
 
-	boost::shared_ptr<Mser<Precision> >         _mser;
-	boost::shared_ptr<MserParameters>           _defaultMserParameters;
-	boost::shared_ptr<ComponentTreeDownSampler> _downSampler;
-	boost::shared_ptr<ComponentTreePruner>      _pruner;
-	boost::shared_ptr<ComponentTreeConverter>   _converter;
+	boost::shared_ptr<ComponentTreeExtractor<Precision> > _componentTreeExtractor;
+	boost::shared_ptr<ComponentTreeExtractorParameters>   _defaultComponentTreeExtractorParameters;
+	boost::shared_ptr<ComponentTreeDownSampler>           _downSampler;
+	boost::shared_ptr<ComponentTreePruner>                _pruner;
+	boost::shared_ptr<ComponentTreeConverter>             _converter;
 };
 
 #endif // SOPNET_SLICE_EXTRACTOR_H__
