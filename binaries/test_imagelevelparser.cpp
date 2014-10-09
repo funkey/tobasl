@@ -22,6 +22,10 @@ util::ProgramOption optionMergeTreeImage(
 		util::_description_text = "An image representing the merge tree.",
 		util::_default_value    = "mergetree.png");
 
+util::ProgramOption optionVisualize(
+		util::_long_name        = "visualize",
+		util::_description_text = "Show a visualization of the component tree.");
+
 int main(int optionc, char** optionv) {
 
 	try {
@@ -47,20 +51,23 @@ int main(int optionc, char** optionv) {
 
 		std::cout << "extracted " << componentTree->size() << " components" << std::endl;
 
-		pipeline::Process<ComponentTreeDownSampler> downsampler;
+		if (optionVisualize) {
 
-		pipeline::Process<ComponentTreeView> componentTreeView;
-		pipeline::Process<gui::RotateView>   rotateView;
-		pipeline::Process<gui::ZoomView>     zoomView;
-		pipeline::Process<gui::Window>       window("imagelevelparser");
+			pipeline::Process<ComponentTreeDownSampler> downsampler;
 
-		downsampler->setInput(componentTreeExtractor->getOutput());
-		componentTreeView->setInput(downsampler->getOutput());
-		rotateView->setInput(componentTreeView->getOutput());
-		zoomView->setInput(rotateView->getOutput());
-		window->setInput(zoomView->getOutput());
+			pipeline::Process<ComponentTreeView> componentTreeView;
+			pipeline::Process<gui::RotateView>   rotateView;
+			pipeline::Process<gui::ZoomView>     zoomView;
+			pipeline::Process<gui::Window>       window("imagelevelparser");
 
-		window->processEvents();
+			downsampler->setInput(componentTreeExtractor->getOutput());
+			componentTreeView->setInput(downsampler->getOutput());
+			rotateView->setInput(componentTreeView->getOutput());
+			zoomView->setInput(rotateView->getOutput());
+			window->setInput(zoomView->getOutput());
+
+			window->processEvents();
+		}
 
 	} catch (Exception& e) {
 
