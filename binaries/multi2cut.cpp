@@ -33,6 +33,12 @@ util::ProgramOption optionMergeTreeImage(
 		util::_description_text = "An image representing the merge tree.",
 		util::_default_value    = "mergetree.png");
 
+util::ProgramOption optionRawImage(
+		util::_long_name        = "rawImage",
+		util::_short_name       = "r",
+		util::_description_text = "The raw image for feature extraction.",
+		util::_default_value    = "raw.png");
+
 util::ProgramOption optionGroundTruth(
 		util::_long_name        = "groundTruth",
 		util::_short_name       = "g",
@@ -61,6 +67,7 @@ int main(int optionc, char** optionv) {
 		LOG_USER(out) << "[main] starting..." << std::endl;
 
 		pipeline::Process<ImageReader>                    imageReader(optionMergeTreeImage.as<std::string>());
+		pipeline::Process<ImageReader>                    rawImageReader(optionRawImage.as<std::string>());
 		pipeline::Process<SliceExtractor<unsigned char> > sliceExtractor(0, true /* downsample */);
 		pipeline::Process<FeatureExtractor>               featureExtractor;
 
@@ -71,6 +78,7 @@ int main(int optionc, char** optionv) {
 		sliceExtractor->setInput("membrane", imageReader->getOutput());
 
 		featureExtractor->setInput("slices", sliceExtractor->getOutput("slices"));
+		featureExtractor->setInput("raw image", rawImageReader->getOutput());
 
 		if (optionWriteLearningProblem) {
 

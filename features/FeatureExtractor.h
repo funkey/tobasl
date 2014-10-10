@@ -16,6 +16,7 @@ private:
 	void updateOutputs();
 
 	pipeline::Input<Slices>    _slices;
+	pipeline::Input<Image>     _image;
 	pipeline::Output<Features> _features;
 };
 
