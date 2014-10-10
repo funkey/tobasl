@@ -1,1 +1,1 @@
-define_module(features OBJECT LINKS imageprocessing)
+define_module(features OBJECT LINKS imageprocessing region_features)
