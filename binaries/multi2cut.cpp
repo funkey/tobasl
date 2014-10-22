@@ -132,13 +132,6 @@ int main(int optionc, char** optionv) {
 
 			foreach (boost::shared_ptr<Slice> slice, *slices) {
 
-
-				if (slice->getComponent()->getCenter().x >= 234 &&
-				    slice->getComponent()->getCenter().x <= 260 &&
-				    slice->getComponent()->getCenter().y >= 60 &&
-				    slice->getComponent()->getCenter().y <= 78)
-					std::cout << "suspicous slice: " << slice->getId() << std::endl;
-
 				std::string imageFilename = "slices/slice_" + boost::lexical_cast<std::string>(slice->getId()) + ".png";
 
 				const ConnectedComponent::bitmap_type& bitmap = slice->getComponent()->getBitmap();
