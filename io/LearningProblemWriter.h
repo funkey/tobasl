@@ -18,14 +18,19 @@ private:
 
 	void updateOutputs() {}
 
-	std::map<unsigned int, double> getSliceCosts();
+	void getSliceCosts();
 
-	unsigned int traverse(boost::shared_ptr<SlicesTree::Node> node, std::map<unsigned int, double>& costs, bool aboveBestEffort);
+	double traverse(boost::shared_ptr<SlicesTree::Node> node);
+
+	void assignSplitCosts(boost::shared_ptr<SlicesTree::Node> node, double costs);
 
 	pipeline::Input<SlicesTree>   _slices;
 	pipeline::Input<ConflictSets> _conflictSets;
 	pipeline::Input<Features>     _features;
 	pipeline::Input<Slices>       _bestEffort;
+
+	// map from slice ids to costs
+	std::map<unsigned int, double> _costs;
 };
 
 #endif // MULTI2CUT_IO_LEARNING_PROBLEM_WRITER_H__

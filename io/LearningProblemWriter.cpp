@@ -86,35 +86,50 @@ LearningProblemWriter::write() {
 
 	costFunctionFile << "numVar = " << nextVarNum << std::endl;
 
-	std::map<unsigned int, double> sliceCosts = getSliceCosts();
+	getSliceCosts();
 
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 
 		costFunctionFile
 				<< "var" << sliceVariableMap.getVariableNum(slice->getId()) << " "
-				<< sliceCosts[slice->getId()] << std::endl;
+				<< _costs[slice->getId()] << std::endl;
 	}
 }
 
-std::map<unsigned int, double>
+void
 LearningProblemWriter::getSliceCosts() {
 
-	std::map<unsigned, double> sliceCosts;
+	// get the plain split and merge costs
+	foreach (boost::shared_ptr<SlicesTree::Node> root, _slices->getRoots())
+		traverse(root);
 
-	foreach (boost::shared_ptr<SlicesTree::Node> root, _slices->getRoots()) {
+	// normalize them to be in [0,1)
+	double topologicalUpperBound = 0;
+	unsigned int id;
+	double costs;
+	foreach (boost::tie(id, costs), _costs)
+		topologicalUpperBound += costs;
+	foreach (boost::tie(id, costs), _costs)
+		_costs[id] /= topologicalUpperBound;
 
-		traverse(root, sliceCosts, true /* above best-effort */);
-	}
+	LOG_DEBUG(learningproblemwriterlog)
+			<< "upper bound on topological costs is "
+			<< topologicalUpperBound << std::endl;
 
-	return sliceCosts;
+	// set a reward of -1 for the best-effort
+	foreach (boost::shared_ptr<Slice> slice, *_bestEffort)
+		_costs[slice->getId()] = -1;
 }
 
-unsigned int
-LearningProblemWriter::traverse(boost::shared_ptr<SlicesTree::Node> node, std::map<unsigned int, double>& costs, bool aboveBestEffort) {
+double
+LearningProblemWriter::traverse(boost::shared_ptr<SlicesTree::Node> node) {
 
 	boost::shared_ptr<Slice> slice = node->getSlice();
 
-	LOG_DEBUG(learningproblemwriterlog) << "entering slice " << slice->getId() << ", size = " << slice->getComponent()->getSize() << std::endl;
+	LOG_DEBUG(learningproblemwriterlog)
+			<< "entering slice " << slice->getId()
+			<< ", size = " << slice->getComponent()->getSize()
+			<< std::endl;
 
 	bool isBestEffort = (std::find(_bestEffort->begin(), _bestEffort->end(), slice) != _bestEffort->end());
 
@@ -122,40 +137,55 @@ LearningProblemWriter::traverse(boost::shared_ptr<SlicesTree::Node> node, std::m
 
 	if (isBestEffort) {
 
-		aboveBestEffort = false;
-		costs[node->getSlice()->getId()] = 0;
+		assignSplitCosts(node, 0);
+		return 0;
 	}
 
 	unsigned int numChildren = node->getChildren().size();
 
 	LOG_DEBUG(learningproblemwriterlog) << "\tthis slice has " << numChildren << " children" << std::endl;
 
-	// assign split costs for each child
-	if (!aboveBestEffort) {
+	if (numChildren == 0) {
 
-		foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren())
-			costs[child->getSlice()->getId()] = 1.0/numChildren;
+		// We are not below best-effort, and we don't have children -- this 
+		// slice belongs to a path that is completely spurious.
 
-		if (numChildren > 0)
-			LOG_DEBUG(learningproblemwriterlog) << "\tthis slice is not above best-effort, assign children split costs of " << (1.0/numChildren) << std::endl;
+		// give it merge costs of 1
+		_costs[slice->getId()] = 1;
+		return 1;
 	}
 
-	LOG_DEBUG(learningproblemwriterlog) << "processing children" << std::endl;
+	// we are above the best effort solution
 
-	unsigned int numMerges = 0;
+	// sum the merge costs of the children
+	double childrenMergeCosts = 0;
 	foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren())
-		numMerges += traverse(child, costs, aboveBestEffort);
-
-	LOG_DEBUG(learningproblemwriterlog) << "done processing children" << std::endl;
+		childrenMergeCosts += traverse(child);
 
 	// assign merge costs for the current node
-	if (aboveBestEffort) {
+	double mergeCosts = static_cast<double>(numChildren) - 1 + childrenMergeCosts;
 
-		LOG_DEBUG(learningproblemwriterlog) << "\tthis slice is above best-effort, assign merge costs of " << (numMerges + 1) << std::endl;
+	LOG_DEBUG(learningproblemwriterlog) << "\tthis slice is above best-effort, assign merge costs of " << mergeCosts << std::endl;
 
-		costs[slice->getId()] = numMerges + 1;
-		return numMerges + 1;
-	}
+	_costs[slice->getId()] = mergeCosts;
 
-	return 0;
+	return mergeCosts;
+}
+
+void
+LearningProblemWriter::assignSplitCosts(boost::shared_ptr<SlicesTree::Node> node, double costs) {
+
+	boost::shared_ptr<Slice> slice = node->getSlice();
+
+	LOG_DEBUG(learningproblemwriterlog)
+			<< "entering slice " << slice->getId()
+			<< ", size = " << slice->getComponent()->getSize()
+			<< std::endl;
+
+	_costs[slice->getId()] = costs;
+
+	double k = node->getChildren().size();
+
+	foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren())
+		assignSplitCosts(child, costs + (k - 1)/k);
 }
