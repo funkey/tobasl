@@ -30,7 +30,7 @@ LearningProblemWriter::write() {
 		sliceVariableMap.associate(slice->getId(), nextVarNum);
 		nextVarNum++;
 
-		std::vector<double> features = _features->getFeatures(slice->getId());
+		const std::vector<double>& features = _features->getFeatures(slice->getId());
 
 		foreach (double f, features) {
 
@@ -39,6 +39,18 @@ LearningProblemWriter::write() {
 
 		featuresFile << std::endl;
 	}
+
+	std::ofstream featuresMinMaxFile("features_minmax.txt");
+
+	const std::vector<double>& min = _features->getMin();
+	const std::vector<double>& max = _features->getMax();
+
+	foreach (double f, min)
+		featuresMinMaxFile << f << " ";
+	featuresMinMaxFile << std::endl;
+	foreach (double f, max)
+		featuresMinMaxFile << f << " ";
+	featuresMinMaxFile << std::endl;
 
 	std::ofstream constraintsFile("constraints.txt");
 
