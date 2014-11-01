@@ -10,7 +10,11 @@ class LearningProblemWriter : public pipeline::SimpleProcessNode<> {
 
 public:
 
-	LearningProblemWriter();
+	/**
+	 * Create a new LearningProblemWriter that writes the learning problem 
+	 * description in the given directory.
+	 */
+	LearningProblemWriter(std::string directory = "./");
 
 	void write();
 
@@ -31,6 +35,8 @@ private:
 
 	// map from slice ids to costs
 	std::map<unsigned int, double> _costs;
+
+	std::string _directory;
 };
 
 #endif // MULTI2CUT_IO_LEARNING_PROBLEM_WRITER_H__

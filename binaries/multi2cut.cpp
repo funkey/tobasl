@@ -8,6 +8,7 @@
 #include <pipeline/Value.h>
 #include <util/ProgramOptions.h>
 #include <util/Logger.h>
+#include <util/exceptions.h>
 #include <util/helpers.hpp>
 
 #include <imageprocessing/io/ImageReader.h>
@@ -94,7 +95,7 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
-			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "best-effort.png");
+			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.png");
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
 			overlapSliceCostFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
@@ -113,26 +114,42 @@ int main(int optionc, char** optionv) {
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
-			pipeline::Process<LearningProblemWriter> writer;
+			pipeline::Process<LearningProblemWriter> writer("learning_problem");
 
 			writer->setInput("slices", sliceExtractor->getOutput("slices"));
 			writer->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
 			writer->setInput("features", featureExtractor->getOutput());
 			writer->setInput("best effort", bestEffortReconstructor->getOutput());
 
+			// write the learning problem
 			writer->write();
+
+			// prepare the output image directory
+			boost::filesystem::path directory("output_images");
+			if (!boost::filesystem::exists(directory))
+				boost::filesystem::create_directory(directory);
+			 else if (!boost::filesystem::is_directory(directory))
+				UTIL_THROW_EXCEPTION(
+						IOError,
+						"\"" << directory << "\" is not a directory");
+			directory = directory / "slices";
+			if (!boost::filesystem::exists(directory))
+				boost::filesystem::create_directory(directory);
+			 else if (!boost::filesystem::is_directory(directory))
+				UTIL_THROW_EXCEPTION(
+						IOError,
+						"\"" << directory << "\" is not a directory");
 
 			// show the best effort solution
 			solutionWriter->setInput("solution", bestEffortReconstructor->getOutput());
 			solutionWriter->write();
 
-			// debug output
-
+			// store slices
 			pipeline::Value<Slices> slices = sliceExtractor->getOutput("slices");
 
 			foreach (boost::shared_ptr<Slice> slice, *slices) {
 
-				std::string imageFilename = "slices/slice_" + boost::lexical_cast<std::string>(slice->getId()) + ".png";
+				std::string imageFilename = "output_images/slices/slice_" + boost::lexical_cast<std::string>(slice->getId()) + ".png";
 
 				const ConnectedComponent::bitmap_type& bitmap = slice->getComponent()->getBitmap();
 
@@ -153,7 +170,7 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>        problemAssembler;
 			pipeline::Process<LinearSolver>            linearSolver;
 			pipeline::Process<Reconstructor>           reconstructor;
-			pipeline::Process<SolutionWriter>          solutionWriter(width, height);
+			pipeline::Process<SolutionWriter>          solutionWriter(width, height, "output_images/solution.png");
 
 			sliceCostFunction->setInput("slices", sliceExtractor->getOutput("slices"));
 			sliceCostFunction->setInput("features", featureExtractor->getOutput());
@@ -172,6 +189,15 @@ int main(int optionc, char** optionv) {
 			reconstructor->setInput("slices", sliceExtractor->getOutput());
 			reconstructor->setInput("slice variable map", problemAssembler->getOutput("slice variable map"));
 			reconstructor->setInput("solution", linearSolver->getOutput("solution"));
+
+			// prepare the output image directory
+			boost::filesystem::path directory("output_images");
+			if (!boost::filesystem::exists(directory))
+				boost::filesystem::create_directory(directory);
+			 else if (!boost::filesystem::is_directory(directory))
+				UTIL_THROW_EXCEPTION(
+						IOError,
+						"\"" << directory << "\" is not a directory");
 
 			solutionWriter->setInput("solution", reconstructor->getOutput());
 			solutionWriter->write();

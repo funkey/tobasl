@@ -5,7 +5,8 @@
 
 logger::LogChannel learningproblemwriterlog("learningproblemwriterlog", "[LearningProblemWriter] ");
 
-LearningProblemWriter::LearningProblemWriter() {
+LearningProblemWriter::LearningProblemWriter(std::string directory) :
+	_directory(directory) {
 
 	registerInput(_slices, "slices");
 	registerInput(_conflictSets, "conflict sets");
@@ -20,7 +21,21 @@ LearningProblemWriter::write() {
 
 	LOG_USER(learningproblemwriterlog) << "writing learning problem" << std::endl;
 
-	std::ofstream featuresFile("features.txt");
+	// prepare the output directory
+	boost::filesystem::path directory(_directory);
+
+	if (!boost::filesystem::exists(directory)) {
+
+		boost::filesystem::create_directory(directory);
+
+	} else if (!boost::filesystem::is_directory(directory)) {
+
+		UTIL_THROW_EXCEPTION(
+				IOError,
+				"\"" << _directory << "\" is not a directory");
+	}
+
+	std::ofstream featuresFile((_directory + "/features.txt").c_str());
 
 	SliceVariableMap sliceVariableMap;
 	unsigned int nextVarNum = 0;
@@ -40,7 +55,7 @@ LearningProblemWriter::write() {
 		featuresFile << std::endl;
 	}
 
-	std::ofstream featuresMinMaxFile("features_minmax.txt");
+	std::ofstream featuresMinMaxFile((_directory + "/features_minmax.txt").c_str());
 
 	const std::vector<double>& min = _features->getMin();
 	const std::vector<double>& max = _features->getMax();
@@ -52,7 +67,7 @@ LearningProblemWriter::write() {
 		featuresMinMaxFile << f << " ";
 	featuresMinMaxFile << std::endl;
 
-	std::ofstream constraintsFile("constraints.txt");
+	std::ofstream constraintsFile((_directory + "/constraints.txt").c_str());
 
 	foreach (ConflictSet& conflictSet, *_conflictSets) {
 
@@ -66,7 +81,7 @@ LearningProblemWriter::write() {
 		constraintsFile << "<= 1" << std::endl;
 	}
 
-	std::ofstream labelsFile("labels.txt");
+	std::ofstream labelsFile((_directory + "/labels.txt").c_str());
 
 	std::set<unsigned int> bestEffortSliceIds;
 	foreach (boost::shared_ptr<Slice> slice, *_bestEffort)
@@ -82,7 +97,7 @@ LearningProblemWriter::write() {
 			labelsFile << 0 << std::endl;
 	}
 
-	std::ofstream costFunctionFile("cost_function.txt");
+	std::ofstream costFunctionFile((_directory + "/cost_function.txt").c_str());
 
 	costFunctionFile << "numVar = " << nextVarNum << std::endl;
 
