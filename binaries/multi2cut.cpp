@@ -17,14 +17,12 @@
 #include <io/LearningProblemWriter.h>
 #include <io/FeatureWeightsReader.h>
 #include <io/SolutionWriter.h>
+#include <io/SlicesWriter.h>
 #include <inference/LinearSliceCostFunction.h>
 #include <inference/OverlapSliceCostFunction.h>
 #include <inference/ProblemAssembler.h>
 #include <inference/LinearSolver.h>
 #include <inference/Reconstructor.h>
-
-// debug
-#include <vigra/impex.hxx>
 
 using namespace logger;
 
@@ -144,33 +142,11 @@ int main(int optionc, char** optionv) {
 			solutionWriter->setInput("solution", bestEffortReconstructor->getOutput());
 			solutionWriter->write();
 
+
 			// store slices and their offsets
-			pipeline::Value<Slices> slices = sliceExtractor->getOutput("slices");
-			std::ofstream sliceOffsets("output_images/slices/offsets.txt");
-
-			foreach (boost::shared_ptr<Slice> slice, *slices) {
-
-				std::stringstream sliceNumber;
-				sliceNumber << std::setw(8) << std::setfill('0') << slice->getId();
-
-				util::rect<unsigned int> boundingBox = slice->getComponent()->getBoundingBox();
-
-				std::string imageFilename = "output_images/slices/slice_" + sliceNumber.str() + ".png";
-
-				const ConnectedComponent::bitmap_type& bitmap = slice->getComponent()->getBitmap();
-
-				// store the image
-				vigra::exportImage(
-						vigra::srcImageRange(bitmap),
-						vigra::ImageExportInfo(imageFilename.c_str()));
-
-				// save the offset of the slice
-				sliceOffsets
-						<< sliceNumber.str()
-						<< "\t" << boundingBox.minX
-						<< "\t" << boundingBox.minY
-						<< std::endl;
-			}
+			pipeline::Process<SlicesWriter> slicesWriter("output_images/slices");
+			slicesWriter->setInput(sliceExtractor->getOutput("slices"));
+			slicesWriter->write();
 
 		} else {
 
