@@ -24,6 +24,8 @@ SlicesWriter::write() {
 				IOError,
 				"can not open " << sliceOffsetsFilename << " for writing");
 
+	sliceOffsets << "slice_id\tmin_x\tmin_y\t# (note that min_x and min_y are given for the slice, not for the slice image, which has a padding of one pixel)" << std::endl;
+
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 
 		std::stringstream sliceNumber;
