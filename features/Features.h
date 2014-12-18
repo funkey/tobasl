@@ -15,6 +15,11 @@ public:
 		_features[sliceId] = features;
 	}
 
+	void addFeatures(unsigned int sliceId, const std::vector<double>& features) {
+
+		std::copy(features.begin(), features.end(), std::back_inserter(_features[sliceId]));
+	}
+
 	const std::vector<double>& getFeatures(unsigned int sliceId) const {
 
 		return _features.at(sliceId);
@@ -24,6 +29,11 @@ public:
 
 		return _features[sliceId];
 	}
+
+	/**
+	 * Remove all features.
+	 */
+	void clear() { _features.clear(); }
 
 	/**
 	 * Normalize the features such that each component is in the interval [0,1].

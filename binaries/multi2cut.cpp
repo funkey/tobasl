@@ -38,6 +38,12 @@ util::ProgramOption optionRawImage(
 		util::_description_text = "The raw image for feature extraction.",
 		util::_default_value    = "raw.png");
 
+util::ProgramOption optionProbabilityImage(
+		util::_long_name        = "probabilityImage",
+		util::_short_name       = "p",
+		util::_description_text = "The membrane probability image for feature extraction.",
+		util::_default_value    = "probability.png");
+
 util::ProgramOption optionGroundTruth(
 		util::_long_name        = "groundTruth",
 		util::_short_name       = "g",
@@ -67,6 +73,7 @@ int main(int optionc, char** optionv) {
 
 		pipeline::Process<ImageReader>                    imageReader(optionMergeTreeImage.as<std::string>());
 		pipeline::Process<ImageReader>                    rawImageReader(optionRawImage.as<std::string>());
+		pipeline::Process<ImageReader>                    probabilityImageReader(optionProbabilityImage.as<std::string>());
 		pipeline::Process<SliceExtractor<unsigned char> > sliceExtractor(0, true /* downsample */);
 		pipeline::Process<FeatureExtractor>               featureExtractor;
 
@@ -78,6 +85,7 @@ int main(int optionc, char** optionv) {
 
 		featureExtractor->setInput("slices", sliceExtractor->getOutput("slices"));
 		featureExtractor->setInput("raw image", rawImageReader->getOutput());
+		featureExtractor->setInput("probability image", probabilityImageReader->getOutput());
 
 		if (optionWriteLearningProblem) {
 
