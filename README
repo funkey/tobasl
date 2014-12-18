@@ -1,2 +1,17 @@
 Multi-Multicut
 ==============
+
+  Configure:
+
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+
+    Set cmake variable Gurobi_ROOT_DIR (or the environment variable
+    GUROBI_ROOT_DIR before you run cmake) to the Gurobi subdirectory containing
+    the /lib and /bin directories. Obtain Gurobi for free for academic purposes
+    at http://gurobi.com.
+
+  Compile:
+
+    $ make
