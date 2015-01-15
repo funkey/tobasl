@@ -65,9 +65,10 @@ FeatureExtractor::updateOutputs() {
 	if (_slices->size() == 0)
 		return;
 
-	RegionFeatures<2, float, bool> regionFeatures;
-
-	LOG_USER(featureextractorlog) << "extracting features for " << _slices->size() << " slices" << std::endl;
+	LOG_USER(featureextractorlog)
+			<< "extracting features for "
+			<< _slices->size()
+			<< " slices" << std::endl;
 
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 
@@ -84,57 +85,56 @@ FeatureExtractor::updateOutputs() {
 		// the "label" image
 		vigra::MultiArrayView<2, bool> labelImage = slice->getComponent()->getBitmap();
 
-		regionFeatures.computeFeatures(rawSliceImage, labelImage);
+		// an adaptor to access the feature map with the right id
+		FeatureIdAdaptor adaptor(slice->getId(), *_features);
 
-		// get the features for "region 1"
-		_features->addFeatures(slice->getId(), regionFeatures.getFeatures(1));
+		RegionFeatures<2, float, bool> regionFeatures(rawSliceImage, labelImage);
+		regionFeatures.fill(adaptor);
 
-        if (optionProbabilityImageFeatures) {
+		if (optionProbabilityImageFeatures) {
 
-            vigra::MultiArrayView<2, float> probabilitySliceImage =
-                            _probabilityImage->subarray(
-                                    Shape(sliceBoundingBox.minX, sliceBoundingBox.minY),
-                                    Shape(sliceBoundingBox.maxX, sliceBoundingBox.maxY));
+			vigra::MultiArrayView<2, float> probabilitySliceImage =
+					_probabilityImage->subarray(
+							Shape(sliceBoundingBox.minX, sliceBoundingBox.minY),
+							Shape(sliceBoundingBox.maxX, sliceBoundingBox.maxY));
 
-            regionFeatures.computeFeatures(probabilitySliceImage, labelImage);
+			RegionFeatures<2, float, bool> probRegionFeatures(probabilitySliceImage, labelImage);
+			probRegionFeatures.fill(adaptor);
 
-            _features->addFeatures(slice->getId(), regionFeatures.getFeatures(1));
+			if (optionProbabilityImageBoundaryFeatures) {
 
-            if (optionProbabilityImageBoundaryFeatures) {
+				// create the boundary image
+				vigra::MultiArray<2, bool> erosionImage(labelImage.shape());
+				vigra::discErosion(labelImage, erosionImage, 1);
+				vigra::MultiArray<2, bool> boundaryImage(labelImage.shape());
+				boundaryImage = labelImage;
+				boundaryImage -= erosionImage;
 
-                // create the boundary image
-                vigra::MultiArray<2, bool> erosionImage(labelImage.shape());
-                vigra::discErosion(labelImage, erosionImage, 1);
-                vigra::MultiArray<2, bool> boundaryImage(labelImage.shape());
-                boundaryImage = labelImage;
-                boundaryImage -= erosionImage;
+				unsigned int width  = boundaryImage.width();
+				unsigned int height = boundaryImage.height();
 
-                unsigned int width  = boundaryImage.width();
-                unsigned int height = boundaryImage.height();
+				for (unsigned int x = 0; x < width; x++) {
 
-                for (unsigned int x = 0; x < width; x++) {
+					boundaryImage(x, 0)		|= labelImage(x, 0);
+					boundaryImage(x, height-1) |= labelImage(x, height-1);
+				}
 
-                    boundaryImage(x, 0)        |= labelImage(x, 0);
-                    boundaryImage(x, height-1) |= labelImage(x, height-1);
-                }
+				for (unsigned int y = 1; y < height-1; y++) {
 
-                for (unsigned int y = 1; y < height-1; y++) {
+					boundaryImage(0, y)	   |= labelImage(0, y);
+					boundaryImage(width-1, y) |= labelImage(width-1, y);
+				}
 
-                    boundaryImage(0, y)       |= labelImage(0, y);
-                    boundaryImage(width-1, y) |= labelImage(width-1, y);
-                }
-
-                regionFeatures.computeFeatures(probabilitySliceImage, labelImage);
-
-                _features->addFeatures(slice->getId(), regionFeatures.getFeatures(1));
-            }
-        }
+				RegionFeatures<2, float, bool> boundaryFeatures(probabilitySliceImage, labelImage);
+				boundaryFeatures.fill(adaptor);
+			}
+		}
 	}
 
-    LOG_USER(featureextractorlog)
-            << "extracted "
-            << _features->getFeatures((*_slices->begin())->getId()).size()
-            << " features" << std::endl;
+	LOG_USER(featureextractorlog)
+			<< "extracted "
+			<< _features->getFeatures((*_slices->begin())->getId()).size()
+			<< " features" << std::endl;
 
 	// normalization 
 	if (optionNormalize) {
@@ -229,10 +229,10 @@ FeatureExtractor::updateOutputs() {
 		}
 	}
 
-    LOG_USER(featureextractorlog)
-            << "after postprocessing, we have "
-            << _features->getFeatures((*_slices->begin())->getId()).size()
-            << " features" << std::endl;
+	LOG_USER(featureextractorlog)
+			<< "after postprocessing, we have "
+			<< _features->getFeatures((*_slices->begin())->getId()).size()
+			<< " features" << std::endl;
 
 	LOG_USER(featureextractorlog) << "done" << std::endl;
 }

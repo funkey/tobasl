@@ -13,6 +13,23 @@ public:
 
 private:
 
+	/**
+	 * Adaptor to be used with RegionFeatures, such that mapping to the correct 
+	 * slice id is preserved.
+	 */
+	class FeatureIdAdaptor {
+
+	public:
+		FeatureIdAdaptor(unsigned int id, Features& features) : _id(id), _features(features) {}
+
+		inline void append(unsigned int /*ignored*/, double value) { _features.append(_id, value); }
+
+	private:
+
+		unsigned int _id;
+		Features&    _features;
+	};
+
 	void updateOutputs();
 
 	pipeline::Input<Slices>    _slices;
