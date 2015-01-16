@@ -30,6 +30,15 @@ public:
 		return _features[sliceId];
 	}
 
+	inline void append(unsigned int sliceId, double value) {
+
+		// nan -> 0
+		if (value != value)
+			value = 0;
+
+		getFeatures(sliceId).push_back(value);
+	}
+
 	/**
 	 * Remove all features.
 	 */
