@@ -14,6 +14,7 @@
 #include <vigra/impex.hxx>
 #include <vigra/multi_array.hxx>
 #include <mergetree/IterativeRegionMerging.h>
+#include <mergetree/MedianEdgeIntensity.h>
 
 util::ProgramOption optionSourceImage(
 		util::_long_name        = "source",
@@ -83,7 +84,8 @@ int main(int optionc, char** optionv) {
 
 		// extract merge tree
 		IterativeRegionMerging merging(initialRegions);
-		merging.createMergeTree();
+		MedianEdgeIntensity mei(image);
+		merging.createMergeTree(mei);
 
 		// DEBUG
 		vigra::exportImage(merging.getRegions(), vigra::ImageExportInfo("debug/02_regions.png").setPixelType("UINT16"));
