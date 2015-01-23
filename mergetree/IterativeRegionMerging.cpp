@@ -1,7 +1,6 @@
 #include <cassert>
 #include <util/Logger.h>
 #include <util/ProgramOptions.h>
-#include <util/assert.h>
 #include <vigra/impex.hxx> // DEBUG
 #include <vigra/graph_algorithms.hxx>
 #include "IterativeRegionMerging.h"
@@ -33,7 +32,8 @@ IterativeRegionMerging::IterativeRegionMerging(
 	_regionSizes(_rag),
 	_parentNodes(_rag),
 	_edgeScores(_rag),
-	_mergeTree(initialRegions.shape()) {
+	_mergeTree(initialRegions.shape()),
+	_mergeEdges(EdgeCompare(_edgeScores)) {
 
 	_smallRegionThreshold = optionSmallRegionThreshold;
 

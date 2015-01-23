@@ -48,6 +48,10 @@ public:
 			_maxEdgeWeight = std::max(_maxEdgeWeight, *i);
 	}
 
+	/**
+	 * Get the score for an edge. An edge will be merged the earlier, the 
+	 * smaller its score is.
+	 */
 	float operator()(std::vector<GridGraphType::Edge>& edge) const {
 
 		std::vector<GridGraphType::Edge>::iterator median = edge.begin() + edge.size()/2;
