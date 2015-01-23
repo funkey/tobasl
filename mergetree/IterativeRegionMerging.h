@@ -21,7 +21,7 @@ public:
 	template <typename ScoringFunction>
 	void createMergeTree(const ScoringFunction& scoringFunction);
 
-	const GridGraphType::NodeMap<int>& getRegions() const { return _regions; }
+	vigra::MultiArrayView<2, int> getMergeTree() { return _mergeTree; }
 
 private:
 
@@ -32,9 +32,10 @@ private:
 			RagType::Node regionB,
 			const ScoringFunction& scoringFunction);
 
+	void finishMergeTree();
+
 	GridGraphType                 _grid;
 	GridGraphType::EdgeMap<float> _gridEdgeWeights;
-	GridGraphType::NodeMap<int>   _regions;
 
 	RagType _rag;
 
@@ -57,9 +58,6 @@ IterativeRegionMerging::createMergeTree(const ScoringFunction& scoringFunction) 
 	// compute initial edge scores
 	for (RagType::EdgeIt edge(_rag); edge != lemon::INVALID; ++edge)
 		_edgeScores[*edge] = scoringFunction(_ragToGridEdges[*edge]);
-
-	// prepare mergetree image
-	_mergeTree = 0;
 
 	LOG_USER(mergetreelog) << "merging small regions first..." << std::endl;
 
@@ -118,6 +116,12 @@ IterativeRegionMerging::createMergeTree(const ScoringFunction& scoringFunction) 
 	}
 
 	LOG_USER(mergetreelog) << "merging other regions..." << std::endl;
+
+	// TODO...
+
+	LOG_USER(mergetreelog) << "finishing merge tree image..." << std::endl;
+
+	finishMergeTree();
 }
 
 template <typename ScoringFunction>
@@ -138,6 +142,11 @@ IterativeRegionMerging::mergeRegions(
 
 	// add new c = a + b
 	RagType::Node c = _rag.addNode();
+
+	// label the edge pixels between a and b with c
+	for (std::vector<GridGraphType::Edge>::iterator i = _ragToGridEdges[edge].begin();
+	     i != _ragToGridEdges[edge].end(); i++)
+		 _mergeTree[std::min(_grid.u(*i), _grid.v(*i))] = _rag.id(c);
 
 	_parentNodes[a] = c;
 	_parentNodes[b] = c;

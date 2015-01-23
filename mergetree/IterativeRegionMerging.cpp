@@ -1,8 +1,12 @@
 #include <cassert>
 #include <util/Logger.h>
 #include <util/ProgramOptions.h>
+#include <util/cont_map.hpp>
+#include <util/assert.h>
+#include <vigra/impex.hxx> // DEBUG
 #include <vigra/graph_algorithms.hxx>
 #include "IterativeRegionMerging.h"
+#include "NodeNumConverter.h"
 
 util::ProgramOption optionSmallRegionThreshold(
 		util::_long_name        = "smallRegionThreshold",
@@ -11,31 +15,55 @@ util::ProgramOption optionSmallRegionThreshold(
 
 logger::LogChannel mergetreelog("mergetreelog", "[IterativeRegionMerging] ");
 
+namespace vigra {
+
+// type traits to use MultiArrayView as NodeMap
+template <>
+struct GraphMapTypeTraits<MultiArrayView<2, int> > {
+	typedef int        Value;
+	typedef int&       Reference;
+	typedef const int& ConstReference;
+};
+
+} // namespace vigra
+
 IterativeRegionMerging::IterativeRegionMerging(
 		vigra::MultiArrayView<2, int> initialRegions) :
 	_grid(initialRegions.shape()),
 	_gridEdgeWeights(_grid),
-	_regions(_grid),
 	_mergeTree(initialRegions.shape()) {
 
-	_regions = initialRegions;
+	_smallRegionThreshold = optionSmallRegionThreshold;
 
 	// get initial region adjecancy graph
+
 	RagType::EdgeMap<std::vector<GridGraphType::Edge> > affiliatedEdges;
 	vigra::makeRegionAdjacencyGraph(
 			_grid,
-			_regions,
+			initialRegions,
 			_rag,
 			affiliatedEdges);
 
 	// get region sizes
-	for (vigra::MultiArray<2, int>::iterator i = _regions.begin(); i != _regions.end(); i++)
+
+	for (vigra::MultiArray<2, int>::iterator i = initialRegions.begin(); i != initialRegions.end(); i++)
 		_regionSizes[_rag.nodeFromId(*i)]++;
+
+	// get grid edges for each rag edge
 
 	for (RagType::EdgeIt edge(_rag); edge != lemon::INVALID; ++edge)
 		_ragToGridEdges[*edge] = affiliatedEdges[*edge];
 
-	_smallRegionThreshold = optionSmallRegionThreshold;
+	// prepare merge-tree image
+
+	_mergeTree = initialRegions;
+	// create 1-pixel boundary with value 0 between adjacent regions
+	for (RagType::EdgeIt edge(_rag); edge != lemon::INVALID; ++edge)
+		for (std::vector<GridGraphType::Edge>::const_iterator i = _ragToGridEdges[*edge].begin();
+		     i != _ragToGridEdges[*edge].end(); i++)
+			_mergeTree[std::min(_grid.u(*i), _grid.v(*i))] = 0;
+
+	// logging
 
 	int numRegions = 0;
 	for (RagType::NodeIt node(_rag); node != lemon::INVALID; ++node)
@@ -46,4 +74,43 @@ IterativeRegionMerging::IterativeRegionMerging(
 			<< "got region adjecancy graph with "
 			<< numRegions << " regions and "
 			<< numRegionEdges << " edges" << std::endl;
+}
+
+void
+IterativeRegionMerging::finishMergeTree() {
+
+	// DEBUG
+	vigra::exportImage(_mergeTree, vigra::ImageExportInfo("debug/03_merge_tree.tiff").setPixelType("FLOAT"));
+
+	// get the max leaf distance for each region
+
+	util::cont_map<RagType::Node, int, NodeNumConverter<RagType> > leafDistances(_rag);
+
+	int maxDistance = 0;
+	for (RagType::NodeIt node(_rag); node != lemon::INVALID; ++node) {
+
+		int distance;
+		RagType::Node parent = *node;
+		for (distance = 0; parent != lemon::INVALID; distance++, parent = _parentNodes[parent]) {
+
+			if (!leafDistances.count(parent))
+				leafDistances[parent] = distance;
+			else
+				leafDistances[parent] = std::max(leafDistances[parent], distance);
+		}
+
+		maxDistance = std::max(distance, maxDistance);
+	}
+
+	// with too many merge levels we run into trouble later
+	UTIL_ASSERT_REL(maxDistance, <, 65535);
+
+	LOG_DEBUG(mergetreelog) << "max merge-tree depth is " << maxDistance << std::endl;
+
+	// replace region ids in merge tree image with leaf distance
+	for (vigra::MultiArray<2, int>::iterator i = _mergeTree.begin(); i != _mergeTree.end(); i++)
+		if (*i == 0) // unmerged edge pixels
+			*i = maxDistance + 1;
+		else
+			*i = leafDistances[_rag.nodeFromId(*i)];
 }

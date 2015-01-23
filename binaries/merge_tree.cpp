@@ -80,15 +80,19 @@ int main(int optionc, char** optionv) {
 		LOG_USER(logger::out) << "found " << maxLabel << " watershed regions" << std::endl;
 
 		// DEBUG
-		vigra::exportImage(initialRegions, vigra::ImageExportInfo("debug/01_initial_regions.png").setPixelType("UINT16"));
+		vigra::exportImage(initialRegions, vigra::ImageExportInfo("debug/01_initial_regions.tiff").setPixelType("FLOAT"));
 
 		// extract merge tree
 		IterativeRegionMerging merging(initialRegions);
+
+		// DEBUG
+		vigra::exportImage(merging.getMergeTree(), vigra::ImageExportInfo("debug/02_initial_merge_tree.tiff").setPixelType("FLOAT"));
+
 		MedianEdgeIntensity mei(image);
 		merging.createMergeTree(mei);
 
 		// DEBUG
-		vigra::exportImage(merging.getRegions(), vigra::ImageExportInfo("debug/02_regions.png").setPixelType("UINT16"));
+		vigra::exportImage(merging.getMergeTree(), vigra::ImageExportInfo("debug/04_final_merge_tree.tiff").setPixelType("FLOAT"));
 
 	} catch (Exception& e) {
 

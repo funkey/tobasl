@@ -4,6 +4,7 @@
 #include <util/cont_map.hpp>
 #include <vigra/multi_gridgraph.hxx>
 #include <vigra/graph_algorithms.hxx>
+#include "EdgeNumConverter.h"
 
 /**
  * An edge scoring function that returns the median intensity of the edge 
@@ -15,25 +16,7 @@ public:
 
 	typedef vigra::GridGraph<2> GridGraphType;
 
-	struct EdgeNumConverter {
-
-		typedef GridGraphType::index_type TargetType;
-
-		EdgeNumConverter(GridGraphType& gridGraph) :
-			graph(gridGraph) {}
-
-		TargetType operator()(const GridGraphType::Edge& edge) const {
-			return graph.id(edge);
-		}
-
-		GridGraphType::Edge operator()(const TargetType& id) const {
-			return graph.edgeFromId(id);
-		}
-
-		GridGraphType& graph;
-	};
-
-	typedef util::cont_map<GridGraphType::Edge, float, EdgeNumConverter> EdgeWeightsType;
+	typedef util::cont_map<GridGraphType::Edge, float, EdgeNumConverter<GridGraphType> > EdgeWeightsType;
 
 	struct EdgeComp {
 
@@ -51,7 +34,7 @@ public:
 
 	MedianEdgeIntensity(const vigra::MultiArrayView<2, float> intensities) :
 		_grid(intensities.shape()),
-		_edgeWeights(EdgeNumConverter(_grid)) {
+		_edgeWeights(EdgeNumConverter<GridGraphType>(_grid)) {
 
 		vigra::edgeWeightsFromNodeWeights(
 				_grid,
