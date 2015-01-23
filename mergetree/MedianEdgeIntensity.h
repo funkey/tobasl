@@ -65,38 +65,12 @@ public:
 			_maxEdgeWeight = std::max(_maxEdgeWeight, i->second);
 	}
 
-	float operator()(const std::vector<GridGraphType::Edge>& edge) const {
+	float operator()(std::vector<GridGraphType::Edge>& edge) const {
 
-		std::cout << "." << std::flush;
+		std::vector<GridGraphType::Edge>::iterator median = edge.begin() + edge.size()/2;
+		std::nth_element(edge.begin(), median, edge.end(), EdgeComp(_edgeWeights));
 
-		std::vector<GridGraphType::Edge> sorted = edge;
-		std::sort(
-				sorted.begin(),
-				sorted.end(),
-				EdgeComp(_edgeWeights));
-
-		return _edgeWeights.at(sorted[sorted.size()/2]);
-
-		//assert(edge.size() > 0);
-
-		//float median = _edgeWeights[edge.begin()];
-		//unsigned int size   = edge.size();
-		//unsigned int left   = 0;
-		//unsigned int center = 0;
-		//unsigned int right  = 0;
-
-		////    *       size/2
-		//// 123456789  i
-		//// llllrrrrr  okay: |l| <= size/2, |r| <= size - size/2
-		////
-		////     *      size/2
-		//// 1234567890 i
-		//// lllcccrrrr
-		//// lllllrrrrr
-		//while (left > size/2 || right > size/2) {
-
-			
-		//}
+		return _edgeWeights.at(*median);
 	}
 
 private:
