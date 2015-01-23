@@ -1,12 +1,10 @@
 #include <cassert>
 #include <util/Logger.h>
 #include <util/ProgramOptions.h>
-#include <util/cont_map.hpp>
 #include <util/assert.h>
 #include <vigra/impex.hxx> // DEBUG
 #include <vigra/graph_algorithms.hxx>
 #include "IterativeRegionMerging.h"
-#include "NodeNumConverter.h"
 
 util::ProgramOption optionSmallRegionThreshold(
 		util::_long_name        = "smallRegionThreshold",
@@ -31,6 +29,10 @@ IterativeRegionMerging::IterativeRegionMerging(
 		vigra::MultiArrayView<2, int> initialRegions) :
 	_grid(initialRegions.shape()),
 	_gridEdgeWeights(_grid),
+	_ragToGridEdges(_rag),
+	_regionSizes(_rag),
+	_parentNodes(_rag),
+	_edgeScores(_rag),
 	_mergeTree(initialRegions.shape()) {
 
 	_smallRegionThreshold = optionSmallRegionThreshold;

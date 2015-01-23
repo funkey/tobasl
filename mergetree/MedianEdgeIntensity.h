@@ -16,7 +16,7 @@ public:
 
 	typedef vigra::GridGraph<2> GridGraphType;
 
-	typedef util::cont_map<GridGraphType::Edge, float, EdgeNumConverter<GridGraphType> > EdgeWeightsType;
+	typedef GridGraphType::EdgeMap<float> EdgeWeightsType;
 
 	struct EdgeComp {
 
@@ -26,7 +26,7 @@ public:
 		bool operator()(
 				const GridGraphType::Edge& a,
 				const GridGraphType::Edge& b) const {
-			return weights.at(a) < weights.at(b);
+			return weights[a] < weights[b];
 		}
 
 		const EdgeWeightsType& weights;
@@ -34,7 +34,7 @@ public:
 
 	MedianEdgeIntensity(const vigra::MultiArrayView<2, float> intensities) :
 		_grid(intensities.shape()),
-		_edgeWeights(EdgeNumConverter<GridGraphType>(_grid)) {
+		_edgeWeights(_grid) {
 
 		vigra::edgeWeightsFromNodeWeights(
 				_grid,
@@ -43,9 +43,9 @@ public:
 
 		if (_edgeWeights.size() == 0)
 			return;
-		_maxEdgeWeight = _edgeWeights.begin()->second;
+		_maxEdgeWeight = *_edgeWeights.begin();
 		for (EdgeWeightsType::const_iterator i = _edgeWeights.begin(); i != _edgeWeights.end(); i++)
-			_maxEdgeWeight = std::max(_maxEdgeWeight, i->second);
+			_maxEdgeWeight = std::max(_maxEdgeWeight, *i);
 	}
 
 	float operator()(std::vector<GridGraphType::Edge>& edge) const {
@@ -53,15 +53,14 @@ public:
 		std::vector<GridGraphType::Edge>::iterator median = edge.begin() + edge.size()/2;
 		std::nth_element(edge.begin(), median, edge.end(), EdgeComp(_edgeWeights));
 
-		return _edgeWeights.at(*median);
+		return _edgeWeights[*median];
 	}
 
 private:
 
-	GridGraphType                 _grid;
-	//GridGraphType::EdgeMap<float> _edgeWeights;
-	EdgeWeightsType               _edgeWeights;
-	float                         _maxEdgeWeight;
+	GridGraphType   _grid;
+	EdgeWeightsType _edgeWeights;
+	float           _maxEdgeWeight;
 };
 
 #endif // MULTI2CUT_MERGETREE_MEDIAN_EDGE_INTENSITY_H__

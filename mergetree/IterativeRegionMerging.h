@@ -3,9 +3,12 @@
 
 #include <iostream>
 #include <util/Logger.h>
+#include <util/cont_map.hpp>
 #include <vigra/multi_gridgraph.hxx>
 #include <vigra/multi_watersheds.hxx>
 #include <vigra/adjacency_list_graph.hxx>
+#include "NodeNumConverter.h"
+#include "EdgeNumConverter.h"
 
 extern logger::LogChannel mergetreelog;
 
@@ -39,10 +42,10 @@ private:
 
 	RagType _rag;
 
-	std::map<RagType::Edge, std::vector<GridGraphType::Edge> > _ragToGridEdges;
-	std::map<RagType::Node, std::size_t>                       _regionSizes;
-	std::map<RagType::Node, RagType::Node>                     _parentNodes;
-	std::map<RagType::Edge, float>                             _edgeScores;
+	util::cont_map<RagType::Edge, std::vector<GridGraphType::Edge>, EdgeNumConverter<RagType> > _ragToGridEdges;
+	util::cont_map<RagType::Node, std::size_t, NodeNumConverter<RagType> >                      _regionSizes;
+	util::cont_map<RagType::Node, RagType::Node, NodeNumConverter<RagType> >                    _parentNodes;
+	util::cont_map<RagType::Edge, float, EdgeNumConverter<RagType> >                            _edgeScores;
 
 	vigra::MultiArray<2, int> _mergeTree;
 
