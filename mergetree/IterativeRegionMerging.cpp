@@ -1,7 +1,6 @@
 #include <cassert>
 #include <util/Logger.h>
 #include <util/ProgramOptions.h>
-#include <vigra/impex.hxx> // DEBUG
 #include <vigra/graph_algorithms.hxx>
 #include "IterativeRegionMerging.h"
 
@@ -80,9 +79,6 @@ IterativeRegionMerging::IterativeRegionMerging(
 
 void
 IterativeRegionMerging::finishMergeTree() {
-
-	// DEBUG
-	vigra::exportImage(_mergeTree, vigra::ImageExportInfo("debug/03_merge_tree.tiff").setPixelType("FLOAT"));
 
 	// get the max leaf distance for each region
 
