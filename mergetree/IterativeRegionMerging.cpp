@@ -80,6 +80,8 @@ IterativeRegionMerging::IterativeRegionMerging(
 void
 IterativeRegionMerging::finishMergeTree() {
 
+	LOG_USER(mergetreelog) << "finishing merge tree image..." << std::endl;
+
 	// get the max leaf distance for each region
 
 	util::cont_map<RagType::Node, int, NodeNumConverter<RagType> > leafDistances(_rag);
@@ -93,8 +95,13 @@ IterativeRegionMerging::finishMergeTree() {
 
 			if (!leafDistances.count(parent))
 				leafDistances[parent] = distance;
-			else
-				leafDistances[parent] = std::max(leafDistances[parent], distance);
+			else {
+
+				if (distance > leafDistances[parent])
+					leafDistances[parent] = distance;
+				else
+					break;
+			}
 		}
 
 		maxDistance = std::max(distance, maxDistance);
@@ -110,5 +117,5 @@ IterativeRegionMerging::finishMergeTree() {
 		if (*i == 0) // unmerged edge pixels
 			*i = maxDistance + 1;
 		else
-			*i = leafDistances[_rag.nodeFromId(*i)];
+			*i = leafDistances.at_index(*i);
 }

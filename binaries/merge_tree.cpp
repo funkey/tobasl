@@ -82,9 +82,10 @@ int main(int optionc, char** optionv) {
 		// extract merge tree
 		IterativeRegionMerging merging(initialRegions);
 
-
 		MedianEdgeIntensity mei(image);
 		merging.createMergeTree(mei);
+
+		LOG_USER(logger::out) << "writing merge tree..." << std::endl;
 
 		vigra::exportImage(merging.getMergeTree(), vigra::ImageExportInfo(optionMergeTreeImage.as<std::string>().c_str()));
 

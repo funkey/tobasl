@@ -179,8 +179,6 @@ IterativeRegionMerging::createMergeTree(const ScoringFunction& scoringFunction) 
 				<< " into " << _rag.id(merged) << std::endl;
 	}
 
-	LOG_USER(mergetreelog) << "finishing merge tree image..." << std::endl;
-
 	finishMergeTree();
 }
 
