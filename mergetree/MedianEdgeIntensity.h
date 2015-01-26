@@ -2,19 +2,20 @@
 #define MULTI2CUT_MERGETREE_MEDIAN_EDGE_INTENSITY_H__
 
 #include <util/cont_map.hpp>
-#include <vigra/multi_gridgraph.hxx>
 #include <vigra/graph_algorithms.hxx>
 #include "EdgeNumConverter.h"
+#include "ScoringFunction.h"
 
 /**
  * An edge scoring function that returns the median intensity of the edge 
  * pixels.
  */
-class MedianEdgeIntensity {
+class MedianEdgeIntensity : public ScoringFunction {
 
 public:
 
-	typedef vigra::GridGraph<2> GridGraphType;
+	typedef vigra::GridGraph<2>       GridGraphType;
+	typedef vigra::AdjacencyListGraph RagType;
 
 	typedef GridGraphType::EdgeMap<float> EdgeWeightsType;
 
@@ -52,10 +53,10 @@ public:
 	 * Get the score for an edge. An edge will be merged the earlier, the 
 	 * smaller its score is.
 	 */
-	float operator()(std::vector<GridGraphType::Edge>& edge) const {
+	float operator()(const RagType::Edge& edge, std::vector<GridGraphType::Edge>& gridEdges) {
 
-		std::vector<GridGraphType::Edge>::iterator median = edge.begin() + edge.size()/2;
-		std::nth_element(edge.begin(), median, edge.end(), EdgeComp(_edgeWeights));
+		std::vector<GridGraphType::Edge>::iterator median = gridEdges.begin() + gridEdges.size()/2;
+		std::nth_element(gridEdges.begin(), median, gridEdges.end(), EdgeComp(_edgeWeights));
 
 		return _edgeWeights[*median];
 	}

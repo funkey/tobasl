@@ -23,14 +23,22 @@ public:
 	IterativeRegionMerging(vigra::MultiArrayView<2, int> initialRegions);
 
 	template <typename ScoringFunction>
-	void createMergeTree(const ScoringFunction& scoringFunction);
+	void createMergeTree(ScoringFunction& scoringFunction);
 
+	/**
+	 * Get the final merge tree as an edge image. Thresholding this image 
+	 * reveals the merges.
+	 */
 	vigra::MultiArrayView<2, int> getMergeTree() { return _mergeTree; }
+
+	/**
+	 * Get the region adjacency graph.
+	 */
+	RagType& getRag() { return _rag; }
 
 private:
 
 	typedef util::cont_map<RagType::Edge, std::vector<GridGraphType::Edge>, EdgeNumConverter<RagType> > GridEdgesType;
-	typedef util::cont_map<RagType::Node, std::size_t, NodeNumConverter<RagType> >                      RegionSizesType;
 	typedef util::cont_map<RagType::Node, RagType::Node, NodeNumConverter<RagType> >                    ParentNodesType;
 	typedef util::cont_map<RagType::Edge, float, EdgeNumConverter<RagType> >                            EdgeScoresType;
 
@@ -58,19 +66,19 @@ private:
 	RagType::Node mergeRegions(
 			RagType::Node regionA,
 			RagType::Node regionB,
-			const ScoringFunction& scoringFunction);
+			ScoringFunction& scoringFunction);
 
 	// merge two regions identified by an edge
 	// a and b can optionally be given as u and v of the edge to avoid a lookup
 	template <typename ScoringFunction>
 	RagType::Node mergeRegions(
 			RagType::Edge edge,
-			const ScoringFunction& scoringFunction,
+			ScoringFunction& scoringFunction,
 			RagType::Node a = RagType::Node(),
 			RagType::Node b = RagType::Node());
 
 	template <typename ScoringFunction>
-	void scoreEdge(const RagType::Edge& edge, const ScoringFunction& scoringFunction);
+	void scoreEdge(const RagType::Edge& edge, ScoringFunction& scoringFunction);
 
 	inline RagType::Edge nextMergeEdge() { float _; return nextMergeEdge(_); }
 	inline RagType::Edge nextMergeEdge(float& score);
@@ -83,20 +91,17 @@ private:
 	RagType _rag;
 
 	GridEdgesType   _ragToGridEdges;
-	RegionSizesType _regionSizes;
 	ParentNodesType _parentNodes;
 	EdgeScoresType  _edgeScores;
 
 	vigra::MultiArray<2, int> _mergeTree;
-
-	std::size_t _smallRegionThreshold;
 
 	MergeEdgesType _mergeEdges;
 };
 
 template <typename ScoringFunction>
 void
-IterativeRegionMerging::createMergeTree(const ScoringFunction& scoringFunction) {
+IterativeRegionMerging::createMergeTree(ScoringFunction& scoringFunction) {
 
 	LOG_USER(mergetreelog) << "computing initial edge scores..." << std::endl;
 
@@ -104,63 +109,7 @@ IterativeRegionMerging::createMergeTree(const ScoringFunction& scoringFunction) 
 	for (RagType::EdgeIt edge(_rag); edge != lemon::INVALID; ++edge)
 		scoreEdge(*edge, scoringFunction);
 
-	LOG_USER(mergetreelog) << "merging small regions first..." << std::endl;
-
-	// get all small regions
-	std::vector<RagType::Node> smallRegions;
-	for (RagType::NodeIt node(_rag); node != lemon::INVALID; ++node)
-		if (_regionSizes[*node] <= _smallRegionThreshold)
-			smallRegions.push_back(*node);
-
-	// merge small regions
-	bool done = false;
-	while (!done) {
-
-		done = true;
-
-		for (std::vector<RagType::Node>::const_iterator node = smallRegions.begin(); node != smallRegions.end(); node++) {
-
-			// skip already merged nodes
-			if (_parentNodes[*node] != lemon::INVALID)
-				continue;
-
-			// find lowest edge
-			RagType::Edge minEdge;
-			float         minScore = 0;
-			for (RagType::IncEdgeIt edge(_rag, *node); edge != lemon::INVALID; ++edge) {
-
-				// skip already merged neighbors
-				if (
-						(*node == _rag.u(*edge) && _parentNodes[_rag.v(*edge)] != lemon::INVALID) ||
-						(*node == _rag.v(*edge) && _parentNodes[_rag.u(*edge)] != lemon::INVALID))
-					continue;
-
-				if (minEdge == lemon::INVALID || _edgeScores[*edge] < minScore) {
-
-					minEdge  = *edge;
-					minScore = _edgeScores[*edge];
-				}
-			}
-
-			// no valid neighbor
-			if (minEdge == lemon::INVALID)
-				continue;
-
-			RagType::Node u = _rag.u(minEdge);
-			RagType::Node v = _rag.v(minEdge);
-
-			RagType::Node merged = mergeRegions(u, v, scoringFunction);
-
-			LOG_DEBUG(mergetreelog)
-					<< "merged small regions " << _rag.id(u) << " and " << _rag.id(v)
-					<< " with score " << minScore
-					<< " into " << _rag.id(merged) << std::endl;
-
-			done = false;
-		}
-	}
-
-	LOG_USER(mergetreelog) << "merging other regions..." << std::endl;
+	LOG_USER(mergetreelog) << "merging regions..." << std::endl;
 
 	RagType::Edge next;
 	float         score;
@@ -187,7 +136,7 @@ IterativeRegionMerging::RagType::Node
 IterativeRegionMerging::mergeRegions(
 		RagType::Node a,
 		RagType::Node b,
-		const ScoringFunction& scoringFunction) {
+		ScoringFunction& scoringFunction) {
 
 	// don't merge previously merged nodes
 	UTIL_ASSERT(_parentNodes[a] == lemon::INVALID);
@@ -205,7 +154,7 @@ template <typename ScoringFunction>
 IterativeRegionMerging::RagType::Node
 IterativeRegionMerging::mergeRegions(
 		RagType::Edge edge,
-		const ScoringFunction& scoringFunction,
+		ScoringFunction& scoringFunction,
 		RagType::Node a,
 		RagType::Node b) {
 
@@ -276,6 +225,9 @@ IterativeRegionMerging::mergeRegions(
 		}
 	}
 
+	// inform visitor
+	scoringFunction.onMerge(edge, c);
+
 	// get edge score for new edges
 	for (std::vector<RagType::Edge>::const_iterator i = newEdges.begin(); i != newEdges.end(); i++)
 		scoreEdge(*i, scoringFunction);
@@ -285,9 +237,9 @@ IterativeRegionMerging::mergeRegions(
 
 template <typename ScoringFunction>
 void
-IterativeRegionMerging::scoreEdge(const RagType::Edge& edge, const ScoringFunction& scoringFunction) {
+IterativeRegionMerging::scoreEdge(const RagType::Edge& edge, ScoringFunction& scoringFunction) {
 
-	_edgeScores[edge] = scoringFunction(_ragToGridEdges[edge]);
+	_edgeScores[edge] = scoringFunction(edge, _ragToGridEdges[edge]);
 	_mergeEdges.push(edge);
 }
 

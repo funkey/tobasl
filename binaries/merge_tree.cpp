@@ -15,6 +15,7 @@
 #include <vigra/multi_array.hxx>
 #include <mergetree/IterativeRegionMerging.h>
 #include <mergetree/MedianEdgeIntensity.h>
+#include <mergetree/SmallFirst.h>
 
 util::ProgramOption optionSourceImage(
 		util::_long_name        = "source",
@@ -83,7 +84,12 @@ int main(int optionc, char** optionv) {
 		IterativeRegionMerging merging(initialRegions);
 
 		MedianEdgeIntensity mei(image);
-		merging.createMergeTree(mei);
+		SmallFirst<MedianEdgeIntensity> scoringFunction(
+				merging.getRag(),
+				image,
+				initialRegions,
+				mei);
+		merging.createMergeTree(scoringFunction);
 
 		LOG_USER(logger::out) << "writing merge tree..." << std::endl;
 

@@ -1,13 +1,7 @@
 #include <cassert>
 #include <util/Logger.h>
-#include <util/ProgramOptions.h>
 #include <vigra/graph_algorithms.hxx>
 #include "IterativeRegionMerging.h"
-
-util::ProgramOption optionSmallRegionThreshold(
-		util::_long_name        = "smallRegionThreshold",
-		util::_description_text = "Maximal size of a region to be considered small. Small regions are merged in a first pass before others are considered.",
-		util::_default_value    = 100);
 
 logger::LogChannel mergetreelog("mergetreelog", "[IterativeRegionMerging] ");
 
@@ -28,13 +22,10 @@ IterativeRegionMerging::IterativeRegionMerging(
 	_grid(initialRegions.shape()),
 	_gridEdgeWeights(_grid),
 	_ragToGridEdges(_rag),
-	_regionSizes(_rag),
 	_parentNodes(_rag),
 	_edgeScores(_rag),
 	_mergeTree(initialRegions.shape()),
 	_mergeEdges(EdgeCompare(_edgeScores)) {
-
-	_smallRegionThreshold = optionSmallRegionThreshold;
 
 	// get initial region adjecancy graph
 
@@ -44,11 +35,6 @@ IterativeRegionMerging::IterativeRegionMerging(
 			initialRegions,
 			_rag,
 			affiliatedEdges);
-
-	// get region sizes
-
-	for (vigra::MultiArray<2, int>::iterator i = initialRegions.begin(); i != initialRegions.end(); i++)
-		_regionSizes[_rag.nodeFromId(*i)]++;
 
 	// get grid edges for each rag edge
 
