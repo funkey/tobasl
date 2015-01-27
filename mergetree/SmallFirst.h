@@ -143,7 +143,7 @@ private:
 };
 
 template <typename ScoringFunctionType>
-const float SmallFirst<ScoringFunctionType>::Offset = 1e6;
+const float SmallFirst<ScoringFunctionType>::Offset = 1e3;
 
 #endif // MULTI2CUT_MERGETREE_SMALL_FIRST_H__
 
