@@ -108,4 +108,5 @@ LearningProblemWriter::write() {
 				<< "var" << sliceVariableMap.getVariableNum(slice->getId()) << " "
 				<< (*_lossFunction)[slice->getId()] << std::endl;
 	}
+	costFunctionFile << "constant " << _lossFunction->getConstant() << std::endl;
 }
