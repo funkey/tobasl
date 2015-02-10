@@ -11,13 +11,12 @@
 #include <util/exceptions.h>
 #include <util/helpers.hpp>
 
-#include <imageprocessing/io/ImageReader.h>
-#include <slices/SliceExtractor.h>
 #include <features/FeatureExtractor.h>
-#include <io/LearningProblemWriter.h>
+#include <io/MergeTreeReader.h>
 #include <io/FeatureWeightsReader.h>
 #include <io/SolutionWriter.h>
 #include <io/SlicesWriter.h>
+#include <io/LearningProblemWriter.h>
 #include <inference/LinearSliceCostFunction.h>
 #include <inference/OverlapSliceCostFunction.h>
 #include <inference/ProblemAssembler.h>
@@ -79,19 +78,16 @@ int main(int optionc, char** optionv) {
 
 		LOG_USER(out) << "[main] starting..." << std::endl;
 
-		pipeline::Process<ImageReader>                    imageReader(optionMergeTreeImage.as<std::string>());
-		pipeline::Process<ImageReader>                    rawImageReader(optionRawImage.as<std::string>());
-		pipeline::Process<ImageReader>                    probabilityImageReader(optionProbabilityImage.as<std::string>());
-		pipeline::Process<SliceExtractor<unsigned char> > sliceExtractor(0, true /* downsample */);
-		pipeline::Process<FeatureExtractor>               featureExtractor;
+		pipeline::Process<MergeTreeReader>  mergeTreeReader(optionMergeTreeImage.as<std::string>());
+		pipeline::Process<ImageReader>      rawImageReader(optionRawImage.as<std::string>());
+		pipeline::Process<ImageReader>      probabilityImageReader(optionProbabilityImage.as<std::string>());
+		pipeline::Process<FeatureExtractor> featureExtractor;
 
-		pipeline::Value<Image> image = imageReader->getOutput();
+		pipeline::Value<Image> image = rawImageReader->getOutput();
 		unsigned int width  = image->width();
 		unsigned int height = image->height();
 
-		sliceExtractor->setInput("membrane", imageReader->getOutput());
-
-		featureExtractor->setInput("slices", sliceExtractor->getOutput("slices"));
+		featureExtractor->setInput("slices", mergeTreeReader->getOutput("slices"));
 		featureExtractor->setInput("raw image", rawImageReader->getOutput());
 		featureExtractor->setInput("probability image", probabilityImageReader->getOutput());
 
@@ -113,9 +109,10 @@ int main(int optionc, char** optionv) {
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
 			overlapSliceCostFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-			overlapSliceCostFunction->setInput("slices", sliceExtractor->getOutput("slices"));
-			bestEffortProblem->setInput("slices", sliceExtractor->getOutput("slices"));
-			bestEffortProblem->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
+			overlapSliceCostFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
+			bestEffortProblem->setInput("slices", mergeTreeReader->getOutput("slices"));
+			bestEffortProblem->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
+			bestEffortProblem->setInput("slice costs", overlapSliceCostFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
 			linearSolverParameters->setVariableType(Binary);
@@ -123,7 +120,7 @@ int main(int optionc, char** optionv) {
 			bestEffortSolver->setInput("linear constraints", bestEffortProblem->getOutput("linear constraints"));
 			bestEffortSolver->setInput("parameters", linearSolverParameters);
 
-			bestEffortReconstructor->setInput("slices", sliceExtractor->getOutput());
+			bestEffortReconstructor->setInput("slices", mergeTreeReader->getOutput());
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
@@ -135,7 +132,7 @@ int main(int optionc, char** optionv) {
 				loss = boost::make_shared<TopologicalLoss>();
 
 				// only for SliceTrees!
-				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 
 			} else if (optionSliceLoss.as<std::string>() == "hamming") {
@@ -143,7 +140,7 @@ int main(int optionc, char** optionv) {
 				LOG_USER(out) << "[main] using slice loss HammingLoss" << std::endl;
 				loss = boost::make_shared<HammingLoss>();
 
-				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 
 			} else if (optionSliceLoss.as<std::string>() == "distance") {
@@ -153,12 +150,12 @@ int main(int optionc, char** optionv) {
 
 				pipeline::Process<SliceDistanceLoss> sliceDistanceLoss;
 
-				sliceDistanceLoss->setInput("slices", sliceExtractor->getOutput("slices"));
+				sliceDistanceLoss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				sliceDistanceLoss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
 
 				// combine the slice distance loss with Hamming (otherwise, 
 				// selecting nothing minimizes the loss)
-				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 				loss->setInput("base loss function", sliceDistanceLoss->getOutput());
 
@@ -171,8 +168,8 @@ int main(int optionc, char** optionv) {
 
 			pipeline::Process<LearningProblemWriter> writer("learning_problem");
 
-			writer->setInput("slices", sliceExtractor->getOutput("slices"));
-			writer->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
+			writer->setInput("slices", mergeTreeReader->getOutput("slices"));
+			writer->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
 			writer->setInput("features", featureExtractor->getOutput());
 			writer->setInput("best effort", bestEffortReconstructor->getOutput());
 			writer->setInput("loss function", loss->getOutput());
@@ -203,7 +200,7 @@ int main(int optionc, char** optionv) {
 
 			// store slices and their offsets
 			pipeline::Process<SlicesWriter> slicesWriter("output_images/slices");
-			slicesWriter->setInput(sliceExtractor->getOutput("slices"));
+			slicesWriter->setInput(mergeTreeReader->getOutput("slices"));
 			slicesWriter->write();
 
 		} else {
@@ -219,12 +216,12 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<Reconstructor>           reconstructor;
 			pipeline::Process<SolutionWriter>          solutionWriter(width, height, "output_images/solution.png");
 
-			sliceCostFunction->setInput("slices", sliceExtractor->getOutput("slices"));
+			sliceCostFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
 			sliceCostFunction->setInput("features", featureExtractor->getOutput());
 			sliceCostFunction->setInput("feature weights", featureWeightsReader->getOutput());
 
-			problemAssembler->setInput("slices", sliceExtractor->getOutput("slices"));
-			problemAssembler->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
+			problemAssembler->setInput("slices", mergeTreeReader->getOutput("slices"));
+			problemAssembler->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
 			problemAssembler->setInput("slice costs", sliceCostFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
@@ -233,7 +230,7 @@ int main(int optionc, char** optionv) {
 			linearSolver->setInput("linear constraints", problemAssembler->getOutput("linear constraints"));
 			linearSolver->setInput("parameters", linearSolverParameters);
 
-			reconstructor->setInput("slices", sliceExtractor->getOutput());
+			reconstructor->setInput("slices", mergeTreeReader->getOutput());
 			reconstructor->setInput("slice variable map", problemAssembler->getOutput("slice variable map"));
 			reconstructor->setInput("solution", linearSolver->getOutput("solution"));
 
