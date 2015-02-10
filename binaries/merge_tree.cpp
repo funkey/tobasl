@@ -16,6 +16,7 @@
 #include <mergetree/IterativeRegionMerging.h>
 #include <mergetree/MedianEdgeIntensity.h>
 #include <mergetree/SmallFirst.h>
+#include <mergetree/RandomPerturbation.h>
 
 util::ProgramOption optionSourceImage(
 		util::_long_name        = "source",
@@ -28,6 +29,11 @@ util::ProgramOption optionMergeTreeImage(
 		util::_short_name       = "m",
 		util::_description_text = "An image representing the merge tree.",
 		util::_default_value    = "mergetree.png");
+
+util::ProgramOption optionRandomPerturbation(
+		util::_long_name        = "randomPerturbation",
+		util::_short_name       = "r",
+		util::_description_text = "Randomly (normally distributed) perturb the edge scores for merging.");
 
 using namespace logger;
 
@@ -89,7 +95,16 @@ int main(int optionc, char** optionv) {
 				image,
 				initialRegions,
 				mei);
-		merging.createMergeTree(scoringFunction);
+
+		if (optionRandomPerturbation) {
+
+			RandomPerturbation<SmallFirst<MedianEdgeIntensity> > rp(scoringFunction);
+			merging.createMergeTree(rp);
+
+		} else {
+
+			merging.createMergeTree(scoringFunction);
+		}
 
 		LOG_USER(logger::out) << "writing merge tree..." << std::endl;
 

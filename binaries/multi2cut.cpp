@@ -116,7 +116,6 @@ int main(int optionc, char** optionv) {
 			overlapSliceCostFunction->setInput("slices", sliceExtractor->getOutput("slices"));
 			bestEffortProblem->setInput("slices", sliceExtractor->getOutput("slices"));
 			bestEffortProblem->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
-			bestEffortProblem->setInput("slice costs", overlapSliceCostFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
 			linearSolverParameters->setVariableType(Binary);
