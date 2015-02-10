@@ -8,6 +8,8 @@ class Features : public pipeline::Data {
 
 public:
 
+	typedef std::map<unsigned int, std::vector<double> > features_type;
+
 	Features() {}
 
 	void setFeatures(unsigned int sliceId, const std::vector<double>& features) {
@@ -148,7 +150,7 @@ private:
 		}
 	}
 
-	std::map<unsigned int, std::vector<double> > _features;
+	features_type _features;
 
 	std::vector<double> _min;
 	std::vector<double> _max;

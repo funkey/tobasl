@@ -23,6 +23,7 @@
 #include <inference/ProblemAssembler.h>
 #include <inference/LinearSolver.h>
 #include <inference/Reconstructor.h>
+#include <loss/TopologicalLoss.h>
 
 using namespace logger;
 
@@ -101,6 +102,7 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
+			pipeline::Process<TopologicalLoss>                loss;
 			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.png");
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
@@ -120,12 +122,17 @@ int main(int optionc, char** optionv) {
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
+			// only for SliceTrees!
+			loss->setInput("slices", sliceExtractor->getOutput("slices"));
+			loss->setInput("best effort", bestEffortReconstructor->getOutput());
+
 			pipeline::Process<LearningProblemWriter> writer("learning_problem");
 
 			writer->setInput("slices", sliceExtractor->getOutput("slices"));
 			writer->setInput("conflict sets", sliceExtractor->getOutput("conflict sets"));
 			writer->setInput("features", featureExtractor->getOutput());
 			writer->setInput("best effort", bestEffortReconstructor->getOutput());
+			writer->setInput("loss function", loss->getOutput());
 
 			// write the learning problem
 			writer->write();

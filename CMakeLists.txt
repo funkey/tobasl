@@ -31,6 +31,7 @@ add_subdirectory(mergetree)
 add_subdirectory(inference)
 add_subdirectory(slices)
 add_subdirectory(features)
+add_subdirectory(loss)
 add_subdirectory(io)
 add_subdirectory(binaries)
 
