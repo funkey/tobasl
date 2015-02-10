@@ -24,6 +24,8 @@
 #include <inference/LinearSolver.h>
 #include <inference/Reconstructor.h>
 #include <loss/TopologicalLoss.h>
+#include <loss/HammingLoss.h>
+#include <loss/SliceDistanceLoss.h>
 
 using namespace logger;
 
@@ -55,6 +57,11 @@ util::ProgramOption optionWriteLearningProblem(
 		util::_long_name        = "writeLearningProblem",
 		util::_short_name       = "l",
 		util::_description_text = "Instead of performing inference, write a learning problem for sbmrm.");
+
+util::ProgramOption optionSliceLoss(
+		util::_long_name        = "sliceLoss",
+		util::_description_text = "The candidate loss function to use for learning. Valid values are: 'topological', 'hamming', and 'distance'.",
+		util::_default_value    = "topological");
 
 int main(int optionc, char** optionv) {
 
@@ -102,7 +109,6 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
-			pipeline::Process<TopologicalLoss>                loss;
 			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.png");
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
@@ -122,9 +128,40 @@ int main(int optionc, char** optionv) {
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
-			// only for SliceTrees!
-			loss->setInput("slices", sliceExtractor->getOutput("slices"));
-			loss->setInput("best effort", bestEffortReconstructor->getOutput());
+			boost::shared_ptr<pipeline::SimpleProcessNode<> > loss;
+
+			if (optionSliceLoss.as<std::string>() == "topological") {
+
+				LOG_USER(out) << "[main] using slice loss TopologicalLoss" << std::endl;
+				loss = boost::make_shared<TopologicalLoss>();
+
+				// only for SliceTrees!
+				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("best effort", bestEffortReconstructor->getOutput());
+
+			} else if (optionSliceLoss.as<std::string>() == "hamming") {
+
+				LOG_USER(out) << "[main] using slice loss HammingLoss" << std::endl;
+				loss = boost::make_shared<HammingLoss>();
+
+				// only for SliceTrees!
+				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("best effort", bestEffortReconstructor->getOutput());
+
+			} else if (optionSliceLoss.as<std::string>() == "distance") {
+
+				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
+				loss = boost::make_shared<SliceDistanceLoss>();
+
+				loss->setInput("slices", sliceExtractor->getOutput("slices"));
+				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+			} else {
+
+				UTIL_THROW_EXCEPTION(
+						UsageError,
+						"unknown slice loss '" << optionSliceLoss.as<std::string>() << "'");
+			}
 
 			pipeline::Process<LearningProblemWriter> writer("learning_problem");
 
