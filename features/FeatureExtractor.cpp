@@ -9,6 +9,13 @@
 
 logger::LogChannel featureextractorlog("featureextractorlog", "[FeatureExtractor] ");
 
+util::ProgramOption optionShapeFeatures(
+	util::_module           = "multi2cut.features",
+	util::_long_name        = "shapeFeatures",
+	util::_description_text = "Compute shape morphology features for each candidate.",
+	util::_default_value    = true
+);
+
 util::ProgramOption optionProbabilityImageFeatures(
 	util::_module           = "multi2cut.features",
 	util::_long_name        = "probabilityImageFeatures",
@@ -95,7 +102,7 @@ FeatureExtractor::updateOutputs() {
 		FeatureIdAdaptor adaptor(slice->getId(), *_features);
 
 		RegionFeatures<2, float, bool>::Parameters p;
-		p.computeRegionprops = true;
+		p.computeRegionprops = optionShapeFeatures;
 		if (optionNoCoordinatesStatistics)
 			p.statisticsParameters.computeCoordinateStatistics = false;
 		RegionFeatures<2, float, bool> regionFeatures(rawSliceImage, labelImage, p);
