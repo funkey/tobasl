@@ -144,17 +144,24 @@ int main(int optionc, char** optionv) {
 				LOG_USER(out) << "[main] using slice loss HammingLoss" << std::endl;
 				loss = boost::make_shared<HammingLoss>();
 
-				// only for SliceTrees!
 				loss->setInput("slices", sliceExtractor->getOutput("slices"));
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 
 			} else if (optionSliceLoss.as<std::string>() == "distance") {
 
 				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
-				loss = boost::make_shared<SliceDistanceLoss>();
+				loss = boost::make_shared<HammingLoss>();
 
+				pipeline::Process<SliceDistanceLoss> sliceDistanceLoss;
+
+				sliceDistanceLoss->setInput("slices", sliceExtractor->getOutput("slices"));
+				sliceDistanceLoss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+				// combine the slice distance loss with Hamming (otherwise, 
+				// selecting nothing minimizes the loss)
 				loss->setInput("slices", sliceExtractor->getOutput("slices"));
-				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+				loss->setInput("best effort", bestEffortReconstructor->getOutput());
+				loss->setInput("base loss function", sliceDistanceLoss->getOutput());
 
 			} else {
 
