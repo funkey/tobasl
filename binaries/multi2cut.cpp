@@ -19,13 +19,14 @@
 #include <io/SlicesWriter.h>
 #include <io/LearningProblemWriter.h>
 #include <inference/LinearSliceCostFunction.h>
-#include <inference/OverlapSliceCostFunction.h>
 #include <inference/ProblemAssembler.h>
 #include <inference/LinearSolver.h>
 #include <inference/Reconstructor.h>
 #include <loss/TopologicalLoss.h>
 #include <loss/HammingLoss.h>
 #include <loss/SliceDistanceLoss.h>
+#include <loss/ContourDistanceLoss.h>
+#include <loss/OverlapLoss.h>
 
 using namespace logger;
 
@@ -60,7 +61,7 @@ util::ProgramOption optionWriteLearningProblem(
 
 util::ProgramOption optionSliceLoss(
 		util::_long_name        = "sliceLoss",
-		util::_description_text = "The candidate loss function to use for learning. Valid values are: 'topological', 'hamming', and 'distance'.",
+		util::_description_text = "The candidate loss function to use for learning. Valid values are: 'topological', 'hamming', 'contourdistance', 'overlap', and 'slicedistance'.",
 		util::_default_value    = "topological");
 
 int main(int optionc, char** optionv) {
@@ -120,18 +121,18 @@ int main(int optionc, char** optionv) {
 
 			pipeline::Process<ImageReader>                    groundTruthReader(optionGroundTruth.as<std::string>());
 			pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false);
-			pipeline::Process<OverlapSliceCostFunction>       overlapSliceCostFunction;
+			pipeline::Process<OverlapLoss>                    overlapLossFunction;
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
 			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.tif");
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
-			overlapSliceCostFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-			overlapSliceCostFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
+			overlapLossFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+			overlapLossFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
 			bestEffortProblem->setInput("slices", mergeTreeReader->getOutput("slices"));
 			bestEffortProblem->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
-			bestEffortProblem->setInput("slice costs", overlapSliceCostFunction->getOutput());
+			bestEffortProblem->setInput("slice loss", overlapLossFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
 			linearSolverParameters->setVariableType(Binary);
@@ -167,7 +168,23 @@ int main(int optionc, char** optionv) {
 				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 
-			} else if (optionSliceLoss.as<std::string>() == "distance") {
+			} else if (optionSliceLoss.as<std::string>() == "contourdistance") {
+
+				LOG_USER(out) << "[main] using slice loss ContourDistanceLoss" << std::endl;
+				loss = boost::make_shared<ContourDistanceLoss>();
+
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+			} else if (optionSliceLoss.as<std::string>() == "overlap") {
+
+				LOG_USER(out) << "[main] using slice loss OverlapLoss" << std::endl;
+				loss = boost::make_shared<OverlapLoss>();
+
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+			} else if (optionSliceLoss.as<std::string>() == "slicedistance") {
 
 				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
 				loss = boost::make_shared<SliceDistanceLoss>();
@@ -175,7 +192,7 @@ int main(int optionc, char** optionv) {
 				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
 
-			} else if (optionSliceLoss.as<std::string>() == "distance+hamming") {
+			} else if (optionSliceLoss.as<std::string>() == "slicedistance+hamming") {
 
 				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
 				loss = boost::make_shared<HammingLoss>();

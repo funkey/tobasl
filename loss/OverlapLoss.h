@@ -1,17 +1,17 @@
-#ifndef MULTI2CUT_INFERENCE_OVERLAP_SLICE_COST_FUNCTION_H__
-#define MULTI2CUT_INFERENCE_OVERLAP_SLICE_COST_FUNCTION_H__
+#ifndef MULTI2CUT_LOSS_OVERLAP_LOSS_H__
+#define MULTI2CUT_LOSS_OVERLAP_LOSS_H__
 
 #include <pipeline/SimpleProcessNode.h>
 
 #include <slices/Slices.h>
 #include <features/Overlap.h>
-#include "SliceCosts.h"
+#include "LossFunction.h"
 
-class OverlapSliceCostFunction : public pipeline::SimpleProcessNode<> {
+class OverlapLoss : public pipeline::SimpleProcessNode<> {
 
 public:
 
-	OverlapSliceCostFunction();
+	OverlapLoss();
 
 private:
 
@@ -22,11 +22,12 @@ private:
 	pipeline::Input<Slices> _groundTruth;
 	pipeline::Input<Slices> _slices;
 
-	pipeline::Output<SliceCosts> _costs;
+	pipeline::Output<LossFunction> _costs;
 
 	// functor to compute overlap between two slices
 	Overlap _overlap;
 };
 
-#endif // MULTI2CUT_INFERENCE_OVERLAP_SLICE_COST_FUNCTION_H__
+#endif // MULTI2CUT_LOSS_OVERLAP_LOSS_H__
+
 

@@ -5,6 +5,7 @@
 
 #include <slices/Slices.h>
 #include <slices/ConflictSets.h>
+#include <loss/LossFunction.h>
 
 #include "LinearObjective.h"
 #include "LinearConstraints.h"
@@ -24,6 +25,7 @@ private:
 	pipeline::Input<Slices>       _slices;
 	pipeline::Input<ConflictSets> _conflictSets;
 	pipeline::Input<SliceCosts>   _sliceCosts;
+	pipeline::Input<LossFunction> _sliceLoss;
 
 	pipeline::Output<LinearObjective>   _objective;
 	pipeline::Output<LinearConstraints> _linearConstraints;

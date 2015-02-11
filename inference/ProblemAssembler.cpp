@@ -4,7 +4,10 @@ ProblemAssembler::ProblemAssembler() {
 
 	registerInput(_slices, "slices");
 	registerInput(_conflictSets, "conflict sets");
-	registerInput(_sliceCosts, "slice costs");
+
+	// one of them has to be set
+	registerInput(_sliceCosts, "slice costs", pipeline::Optional);
+	registerInput(_sliceLoss, "slice loss", pipeline::Optional);
 
 	registerOutput(_objective, "objective");
 	registerOutput(_linearConstraints, "linear constraints");
@@ -13,6 +16,11 @@ ProblemAssembler::ProblemAssembler() {
 
 void
 ProblemAssembler::updateOutputs() {
+
+	if (!_sliceCosts.isSet() && !_sliceLoss.isSet())
+		UTIL_THROW_EXCEPTION(
+				UsageError,
+				"at least one of slice costs or slice loss has to be set");
 
 	_sliceVariableMap  = new SliceVariableMap();
 	_objective         = new LinearObjective(_slices->size());
@@ -28,7 +36,10 @@ ProblemAssembler::updateOutputs() {
 
 		_sliceVariableMap->associate(slice->getId(), varNum);
 
-		_objective->setCoefficient(varNum, _sliceCosts->getCosts(slice->getId()));
+		if (_sliceCosts.isSet())
+			_objective->setCoefficient(varNum, _sliceCosts->getCosts(slice->getId()));
+		else
+			_objective->setCoefficient(varNum, (*_sliceLoss)[slice->getId()]);
 	}
 
 	// create one linear constraint per conflict set

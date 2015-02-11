@@ -1,30 +1,30 @@
-#include "OverlapSliceCostFunction.h"
+#include "OverlapLoss.h"
 
-OverlapSliceCostFunction::OverlapSliceCostFunction() :
+OverlapLoss::OverlapLoss() :
 		_overlap(false /* don't normalize */, false /* don't align */) {
 
 	registerInput(_groundTruth, "ground truth");
 	registerInput(_slices, "slices");
 
-	registerOutput(_costs, "slice costs");
+	registerOutput(_costs, "loss function");
 }
 
 void
-OverlapSliceCostFunction::updateOutputs() {
+OverlapLoss::updateOutputs() {
 
-	_costs = new SliceCosts();
+	_costs = new LossFunction();
 
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 
 		double score = computeMaxGroundTruthOverlap(*slice);
 
 		// get a reward for maximizing overlap
-		_costs->setCosts(slice->getId(), score);
+		(*_costs)[slice->getId()] = score;
 	}
 }
 
 double
-OverlapSliceCostFunction::computeMaxGroundTruthOverlap(const Slice& slice) {
+OverlapLoss::computeMaxGroundTruthOverlap(const Slice& slice) {
 
 	double maxOverlap = 0;
 

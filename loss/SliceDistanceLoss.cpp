@@ -1,15 +1,10 @@
 #include <limits>
 #include <util/ProgramOptions.h>
 #include "SliceDistanceLoss.h"
-
-util::ProgramOption optionLossMaxSliceDistance(
-		util::_module           = "loss",
-		util::_long_name        = "maxCenterDistance",
-		util::_description_text = "The maximal center distance between candidates and ground truth to consider for computing the slice distance loss.",
-		util::_default_value    = 1000);
+#include "Options.h"
 
 SliceDistanceLoss::SliceDistanceLoss() :
-	_maxSliceDistance(optionLossMaxSliceDistance) {
+	_maxSliceDistance(optionLossMaxCenterDistance) {
 
 	registerInput(_slices, "slices");
 	registerInput(_groundTruth, "ground truth");
