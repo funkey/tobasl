@@ -3,10 +3,12 @@
 
 #include <boost/math/distributions/normal.hpp>
 #include <util/ProgramOptions.h>
+#include <util/Logger.h>
 #include "ScoringFunction.h"
 
 extern util::ProgramOption optionRandomPerturbationStdDev;
 extern util::ProgramOption optionRandomPerturbationSeed;
+extern logger::LogChannel randomperturbationlog;
 
 /**
  * A scoring function that randomly perturbes the scores of another scoring 
@@ -21,6 +23,11 @@ public:
 	RandomPerturbation(ScoringFunctionType& scoringFunction) :
 		_scoringFunction(scoringFunction),
 		_normalDistribution(0, optionRandomPerturbationStdDev.as<double>()) {
+
+			LOG_USER(randomperturbationlog)
+					<< "randomly perturb edge scores with stddev "
+					<< optionRandomPerturbationStdDev.as<double>()
+					<< std::endl;
 
 			srand(optionRandomPerturbationSeed.as<int>());
 		}

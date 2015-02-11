@@ -9,3 +9,5 @@ util::ProgramOption optionRandomPerturbationSeed(
 		util::_long_name        = "randomPerturbationSeed",
 		util::_description_text = "The seed for the random number generator.",
 		util::_default_value    = 7 /* why not? */);
+
+logger::LogChannel randomperturbationlog("randomperturbationlog", "[RandomPerturbation] ");
