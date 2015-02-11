@@ -59,10 +59,109 @@ util::ProgramOption optionWriteLearningProblem(
 		util::_short_name       = "l",
 		util::_description_text = "Instead of performing inference, write a learning problem for sbmrm.");
 
+util::ProgramOption optionBestEffortLoss(
+		util::_long_name        = "bestEffortLoss",
+		util::_description_text = "The candidate loss function to use to find the best-effort for learning. Valid values are: "
+		                          "'contourdistance', 'overlap' (default), and 'slicedistance'.",
+		util::_default_value    = "overlap");
+
 util::ProgramOption optionSliceLoss(
 		util::_long_name        = "sliceLoss",
-		util::_description_text = "The candidate loss function to use for learning. Valid values are: 'topological', 'hamming', 'contourdistance', 'overlap', and 'slicedistance'.",
+		util::_description_text = "The candidate loss function to use as Δ for learning. Valid values are: "
+		                          "'topological' (default), 'hamming', 'best-effort' (same as bestEffortLoss), 'contourdistance', 'overlap', and 'slicedistance'.",
 		util::_default_value    = "topological");
+
+boost::shared_ptr<pipeline::SimpleProcessNode<> >
+getLoss(
+		std::string name,
+		bool multiMergeTrees,
+		boost::shared_ptr<pipeline::ProcessNode> mergeTreeReader,
+		boost::shared_ptr<pipeline::ProcessNode> gtSliceExtractor,
+		boost::shared_ptr<pipeline::ProcessNode> bestEffortReconstructor = boost::shared_ptr<pipeline::ProcessNode>()) {
+
+	boost::shared_ptr<pipeline::SimpleProcessNode<> > loss;
+
+	if (name == "topological") {
+
+		if (multiMergeTrees)
+			UTIL_THROW_EXCEPTION(
+					UsageError,
+					"The topological loss can only be used with single merge trees.");
+
+		if (!bestEffortReconstructor)
+			UTIL_THROW_EXCEPTION(
+					UsageError,
+					"The topological loss needs a best-effort solution (and can therefore not be used to find one).");
+
+		LOG_USER(out) << "[main] using slice loss TopologicalLoss" << std::endl;
+		loss = boost::make_shared<TopologicalLoss>();
+
+		// only for SliceTrees!
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+
+	} else if (name == "hamming") {
+
+		if (!bestEffortReconstructor)
+			UTIL_THROW_EXCEPTION(
+					UsageError,
+					"The hamming loss needs a best-effort solution (and can therefore not be used to find one).");
+
+		LOG_USER(out) << "[main] using slice loss HammingLoss" << std::endl;
+		loss = boost::make_shared<HammingLoss>();
+
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+
+	} else if (name == "contourdistance") {
+
+		LOG_USER(out) << "[main] using slice loss ContourDistanceLoss" << std::endl;
+		loss = boost::make_shared<ContourDistanceLoss>();
+
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+	} else if (name == "overlap") {
+
+		LOG_USER(out) << "[main] using slice loss OverlapLoss" << std::endl;
+		loss = boost::make_shared<OverlapLoss>();
+
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+	} else if (name == "slicedistance") {
+
+		LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
+		loss = boost::make_shared<SliceDistanceLoss>();
+
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+	} else if (name == "slicedistance+hamming") {
+
+		LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
+		loss = boost::make_shared<HammingLoss>();
+
+		pipeline::Process<SliceDistanceLoss> sliceDistanceLoss;
+
+		sliceDistanceLoss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		sliceDistanceLoss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+		// combine the slice distance loss with Hamming (otherwise, 
+		// selecting nothing minimizes the loss)
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+		loss->setInput("base loss function", sliceDistanceLoss->getOutput());
+
+	} else {
+
+		UTIL_THROW_EXCEPTION(
+				UsageError,
+				"unknown slice loss '" << name << "'");
+	}
+
+	return loss;
+}
 
 int main(int optionc, char** optionv) {
 
@@ -121,18 +220,23 @@ int main(int optionc, char** optionv) {
 
 			pipeline::Process<ImageReader>                    groundTruthReader(optionGroundTruth.as<std::string>());
 			pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false);
-			pipeline::Process<OverlapLoss>                    overlapLossFunction;
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
 			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.tif");
 
+			LOG_USER(out) << "creating best-effort loss..." << std::endl;
+			boost::shared_ptr<pipeline::ProcessNode> bestEffortLossFunction =
+					getLoss(
+							optionBestEffortLoss,
+							multiMergeTrees,
+							mergeTreeReader,
+							gtSliceExtractor.getOperator());
+
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
-			overlapLossFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-			overlapLossFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
 			bestEffortProblem->setInput("slices", mergeTreeReader->getOutput("slices"));
 			bestEffortProblem->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
-			bestEffortProblem->setInput("slice loss", overlapLossFunction->getOutput());
+			bestEffortProblem->setInput("slice loss", bestEffortLossFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
 			linearSolverParameters->setVariableType(Binary);
@@ -144,75 +248,23 @@ int main(int optionc, char** optionv) {
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
-			boost::shared_ptr<pipeline::SimpleProcessNode<> > loss;
+			boost::shared_ptr<pipeline::ProcessNode> loss;
 
-			if (optionSliceLoss.as<std::string>() == "topological") {
+			LOG_USER(out) << "creating slice loss..." << std::endl;
+			if (optionSliceLoss.as<std::string>() == "best-effort") {
 
-				if (multiMergeTrees)
-					UTIL_THROW_EXCEPTION(
-							UsageError,
-							"The topological loss can only be used with single merge trees.");
-
-				LOG_USER(out) << "[main] using slice loss TopologicalLoss" << std::endl;
-				loss = boost::make_shared<TopologicalLoss>();
-
-				// only for SliceTrees!
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("best effort", bestEffortReconstructor->getOutput());
-
-			} else if (optionSliceLoss.as<std::string>() == "hamming") {
-
-				LOG_USER(out) << "[main] using slice loss HammingLoss" << std::endl;
-				loss = boost::make_shared<HammingLoss>();
-
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("best effort", bestEffortReconstructor->getOutput());
-
-			} else if (optionSliceLoss.as<std::string>() == "contourdistance") {
-
-				LOG_USER(out) << "[main] using slice loss ContourDistanceLoss" << std::endl;
-				loss = boost::make_shared<ContourDistanceLoss>();
-
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-
-			} else if (optionSliceLoss.as<std::string>() == "overlap") {
-
-				LOG_USER(out) << "[main] using slice loss OverlapLoss" << std::endl;
-				loss = boost::make_shared<OverlapLoss>();
-
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-
-			} else if (optionSliceLoss.as<std::string>() == "slicedistance") {
-
-				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
-				loss = boost::make_shared<SliceDistanceLoss>();
-
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-
-			} else if (optionSliceLoss.as<std::string>() == "slicedistance+hamming") {
-
-				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
-				loss = boost::make_shared<HammingLoss>();
-
-				pipeline::Process<SliceDistanceLoss> sliceDistanceLoss;
-
-				sliceDistanceLoss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				sliceDistanceLoss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
-
-				// combine the slice distance loss with Hamming (otherwise, 
-				// selecting nothing minimizes the loss)
-				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-				loss->setInput("best effort", bestEffortReconstructor->getOutput());
-				loss->setInput("base loss function", sliceDistanceLoss->getOutput());
+				loss = bestEffortLossFunction;
+				LOG_USER(out) << "use the same as best-effort" << std::endl;
 
 			} else {
 
-				UTIL_THROW_EXCEPTION(
-						UsageError,
-						"unknown slice loss '" << optionSliceLoss.as<std::string>() << "'");
+				loss =
+					getLoss(
+							optionSliceLoss,
+							multiMergeTrees,
+							mergeTreeReader,
+							gtSliceExtractor.getOperator(),
+							bestEffortReconstructor.getOperator());
 			}
 
 			pipeline::Process<LearningProblemWriter> writer("learning_problem");
