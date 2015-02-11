@@ -1,5 +1,8 @@
 #include <vigra/impex.hxx>
+#include <util/Logger.h>
 #include "SolutionWriter.h"
+
+logger::LogChannel solutionwriterlog("solutionwriterlog", "[SolutionWriter] ");
 
 SolutionWriter::SolutionWriter(unsigned int width, unsigned int height, const std::string& filename) :
 	_width(width),
@@ -20,7 +23,14 @@ SolutionWriter::write() {
 
 		foreach (const util::point<unsigned int>& p, slice->getComponent()->getPixels()) {
 
-			segmentation(p.x, p.y) = 1.0;
+			if (segmentation(p.x, p.y) != 0)
+				LOG_ERROR(solutionwriterlog)
+						<< "inconsistency in solution: pixel " << p
+						<< " is part of at least two slices: "
+						<< segmentation(p.x, p.y) << " and "
+						<< slice->getId() << std::endl;
+
+			segmentation(p.x, p.y) = slice->getId();
 		}
 	}
 

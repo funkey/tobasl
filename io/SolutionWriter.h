@@ -2,7 +2,6 @@
 #define MULTI2CUT_IO_SOLUTION_WRITER_H__
 
 #include <pipeline/SimpleProcessNode.h>
-
 #include <slices/Slices.h>
 
 class SolutionWriter : public pipeline::SimpleProcessNode<> {

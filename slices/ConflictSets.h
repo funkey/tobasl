@@ -21,6 +21,12 @@ public:
 		_conflictSets.push_back(conflictSet);
 	}
 
+	void addAll(const ConflictSets& conflictSets) {
+
+		foreach (const ConflictSet& conflictSet, conflictSets)
+			add(conflictSet);
+	}
+
 	std::vector<ConflictSet>::iterator begin() {
 
 		return _conflictSets.begin();

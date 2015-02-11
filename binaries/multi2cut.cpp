@@ -13,6 +13,7 @@
 
 #include <features/FeatureExtractor.h>
 #include <io/MergeTreeReader.h>
+#include <io/MultiMergeTreeReader.h>
 #include <io/FeatureWeightsReader.h>
 #include <io/SolutionWriter.h>
 #include <io/SlicesWriter.h>
@@ -31,7 +32,7 @@ using namespace logger;
 util::ProgramOption optionMergeTreeImage(
 		util::_long_name        = "mergeTreeImage",
 		util::_short_name       = "i",
-		util::_description_text = "An image representing the merge tree.",
+		util::_description_text = "A single image file representing the merge tree or a directory of images for merging of multiple merge trees.",
 		util::_default_value    = "mergetree.png");
 
 util::ProgramOption optionRawImage(
@@ -78,7 +79,25 @@ int main(int optionc, char** optionv) {
 
 		LOG_USER(out) << "[main] starting..." << std::endl;
 
-		pipeline::Process<MergeTreeReader>  mergeTreeReader(optionMergeTreeImage.as<std::string>());
+		boost::filesystem::path mergeTree(optionMergeTreeImage.as<std::string>());
+		bool multiMergeTrees = boost::filesystem::is_directory(mergeTree);
+
+		if (multiMergeTrees) {
+
+			LOG_USER(out) << "[main] reading multiple merge tree images" << std::endl;
+
+		} else {
+
+			LOG_USER(out) << "[main] reading a single merge tree image" << std::endl;
+		}
+
+		boost::shared_ptr<pipeline::SimpleProcessNode<> > mergeTreeReader;
+
+		if (multiMergeTrees)
+			mergeTreeReader = boost::make_shared<MultiMergeTreeReader>(optionMergeTreeImage.as<std::string>());
+		else
+			mergeTreeReader = boost::make_shared<MergeTreeReader>(optionMergeTreeImage.as<std::string>());
+
 		pipeline::Process<ImageReader>      rawImageReader(optionRawImage.as<std::string>());
 		pipeline::Process<ImageReader>      probabilityImageReader(optionProbabilityImage.as<std::string>());
 		pipeline::Process<FeatureExtractor> featureExtractor;
@@ -105,7 +124,7 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>               bestEffortProblem;
 			pipeline::Process<LinearSolver>                   bestEffortSolver;
 			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
-			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.png");
+			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.tif");
 
 			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
 			overlapSliceCostFunction->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
@@ -128,6 +147,11 @@ int main(int optionc, char** optionv) {
 
 			if (optionSliceLoss.as<std::string>() == "topological") {
 
+				if (multiMergeTrees)
+					UTIL_THROW_EXCEPTION(
+							UsageError,
+							"The topological loss can only be used with single merge trees.");
+
 				LOG_USER(out) << "[main] using slice loss TopologicalLoss" << std::endl;
 				loss = boost::make_shared<TopologicalLoss>();
 
@@ -144,6 +168,14 @@ int main(int optionc, char** optionv) {
 				loss->setInput("best effort", bestEffortReconstructor->getOutput());
 
 			} else if (optionSliceLoss.as<std::string>() == "distance") {
+
+				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
+				loss = boost::make_shared<SliceDistanceLoss>();
+
+				loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+				loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+			} else if (optionSliceLoss.as<std::string>() == "distance+hamming") {
 
 				LOG_USER(out) << "[main] using slice loss SliceDistanceLoss" << std::endl;
 				loss = boost::make_shared<HammingLoss>();
@@ -214,7 +246,7 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<ProblemAssembler>        problemAssembler;
 			pipeline::Process<LinearSolver>            linearSolver;
 			pipeline::Process<Reconstructor>           reconstructor;
-			pipeline::Process<SolutionWriter>          solutionWriter(width, height, "output_images/solution.png");
+			pipeline::Process<SolutionWriter>          solutionWriter(width, height, "output_images/solution.tif");
 
 			sliceCostFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
 			sliceCostFunction->setInput("features", featureExtractor->getOutput());
