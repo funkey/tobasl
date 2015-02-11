@@ -4,10 +4,16 @@
 #include "ContourDistanceLoss.h"
 #include "Options.h"
 
+util::ProgramOption optionHardLoss(
+		util::_module           = "loss.contourdistanceloss",
+		util::_long_name        = "hardLossThreshold",
+		util::_description_text = "Turn the loss into a hard loss by thresholding with the given value: below threshold will be -1, above 1.");
+
 logger::LogChannel contourdistancelosslog("contourdistancelosslog", "[ContourDistanceLoss] ");
 
 ContourDistanceLoss::ContourDistanceLoss() :
 	_maxCenterDistance(optionLossMaxCenterDistance),
+	_hardLossThreshold(optionHardLoss.as<double>()),
 	_overlap(false, false) {
 
 	registerInput(_slices, "slices");
@@ -29,12 +35,15 @@ ContourDistanceLoss::updateOutputs() {
 	foreach (boost::shared_ptr<Slice> slice, *_slices)
 		getLoss(*slice);
 
-	// constant offset
-	double constant = 0;
-	foreach (boost::shared_ptr<Slice> gtSlice, *_groundTruth)
-		constant += _sliceDiameter(*gtSlice);
+	if (!optionHardLoss) {
 
-	_lossFunction->setConstant(constant);
+		// constant offset
+		double constant = 0;
+		foreach (boost::shared_ptr<Slice> gtSlice, *_groundTruth)
+			constant += _sliceDiameter(*gtSlice);
+
+		_lossFunction->setConstant(constant);
+	}
 
 	LOG_USER(contourdistancelosslog) << "done." << std::endl;
 }
@@ -100,6 +109,28 @@ ContourDistanceLoss::getLoss(const Slice& slice) {
 		penalty += gtToCandidate + candidateToGt;
 	}
 
-	(*_lossFunction)[slice.getId()] = penalty - maxOverlapDiameter;
+	if (optionHardLoss) {
+
+		// not overlapping with any gt region?
+		if (!bestGtRegion) {
+
+			(*_lossFunction)[slice.getId()] =  1; // bad!
+
+		} else {
+
+			// total score should be zero, if the candidate is a perfect fit
+			double totalScore =
+					_sliceDiameter(*bestGtRegion) - maxOverlapDiameter + penalty;
+
+			if (totalScore > _hardLossThreshold)
+				(*_lossFunction)[slice.getId()] =  1; // bad!
+			else
+				(*_lossFunction)[slice.getId()] = -1; // good!
+		}
+
+	} else {
+
+		(*_lossFunction)[slice.getId()] = penalty - maxOverlapDiameter;
+	}
 }
 

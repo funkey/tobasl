@@ -25,6 +25,7 @@ private:
 	pipeline::Output<LossFunction> _lossFunction;
 
 	double _maxCenterDistance;
+	double _hardLossThreshold;
 
 	Distance _sliceDistance;
 	Diameter _sliceDiameter;
