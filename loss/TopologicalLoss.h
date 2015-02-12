@@ -15,12 +15,12 @@ private:
 
 	void updateOutputs();
 
-	double traverse(boost::shared_ptr<SlicesTree::Node> node);
+	double traverse(boost::shared_ptr<SlicesTree::Node> node, const Slices& bestEffort);
 
 	void assignSplitCosts(boost::shared_ptr<SlicesTree::Node> node, double costs);
 
-	pipeline::Input<SlicesTree>    _slices;
-	pipeline::Input<Slices>        _bestEffort;
+	pipeline::Inputs<SlicesTree>   _slices;
+	pipeline::Inputs<Slices>       _bestEffort;
 	pipeline::Output<LossFunction> _lossFunction;
 };
 
