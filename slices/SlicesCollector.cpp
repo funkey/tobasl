@@ -55,7 +55,7 @@ SlicesCollector::updateOutputs() {
 
 	LOG_USER(slicescollectorlog) << "removed " << sliceCopies.size() << " duplicates" << std::endl;
 
-	// copy conflict sets
+	// copy conflict sets, map slice ids of duplicates
 	foreach (boost::shared_ptr<ConflictSets> conflictSets, _conflictSets) {
 
 		foreach (const ConflictSet& conflictSet, *conflictSets) {
