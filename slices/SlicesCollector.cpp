@@ -1,4 +1,7 @@
+#include <util/Logger.h>
 #include "SlicesCollector.h"
+
+logger::LogChannel slicescollectorlog("slicescollectorlog", "[SlicesCollector] ");
 
 SlicesCollector::SlicesCollector() :
 	_overlap(false /* don't normalize */, false /* don't align */) {
@@ -20,13 +23,56 @@ SlicesCollector::updateOutputs() {
 	_allSlices->clear();
 	_allConflictSets->clear();
 
-	// copy slices
-	foreach (boost::shared_ptr<Slices> slices, _slices)
-		_allSlices->addAll(*slices);
+	// slice hash to slice id for each unique slice
+	std::map<ConnectedComponentHash, unsigned int> sliceHashes;
+
+	// slice id to slice id of already added duplicate
+	std::map<unsigned int, unsigned int>           sliceCopies;
+
+	// copy only unique slices
+	foreach (boost::shared_ptr<Slices> slices, _slices) {
+
+		foreach (boost::shared_ptr<Slice> slice, *slices) {
+
+			ConnectedComponentHash hash = slice->getComponent()->hashValue();
+
+			// duplicate?
+			if (sliceHashes.count(hash)) {
+
+				// remember mapping of this slice to duplicate
+				sliceCopies[slice->getId()] = sliceHashes[hash];
+
+			} else {
+
+				// add the slice
+				_allSlices->add(slice);
+
+				// remember it via its hash
+				sliceHashes[hash] = slice->getId();
+			}
+		}
+	}
+
+	LOG_USER(slicescollectorlog) << "removed " << sliceCopies.size() << " duplicates" << std::endl;
 
 	// copy conflict sets
-	foreach (boost::shared_ptr<ConflictSets> conflictSets, _conflictSets)
-		_allConflictSets->addAll(*conflictSets);
+	foreach (boost::shared_ptr<ConflictSets> conflictSets, _conflictSets) {
+
+		foreach (const ConflictSet& conflictSet, *conflictSets) {
+
+			ConflictSet mapped;
+			foreach (unsigned int sliceId, conflictSet.getSlices()) {
+
+				// is a duplicate?
+				if (sliceCopies.count(sliceId))
+					mapped.addSlice(sliceCopies[sliceId]);
+				else
+					mapped.addSlice(sliceId);
+			}
+
+			_allConflictSets->add(mapped);
+		}
+	}
 
 	// create new conflict sets
 	for (unsigned int i = 0; i < _slices.size(); i++)
