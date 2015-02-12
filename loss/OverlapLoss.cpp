@@ -1,7 +1,15 @@
+#include <util/ProgramOptions.h>
 #include "OverlapLoss.h"
 
+util::ProgramOption optionOverlapLossSetDifferenceScale(
+		util::_module           = "loss.overlaploss",
+		util::_long_name        = "setDifferenceScale",
+		util::_description_text = "The overlap loss is set_difference*w - overlap. This parameter sets the w (default 1.0).",
+		util::_default_value    = 1.0);
+
 OverlapLoss::OverlapLoss() :
-		_overlap(false /* don't normalize */, false /* don't align */) {
+		_overlap(false /* don't normalize */, false /* don't align */),
+		_setDifferenceScale(optionOverlapLossSetDifferenceScale) {
 
 	registerInput(_groundTruth, "ground truth");
 	registerInput(_slices, "slices");
@@ -50,5 +58,5 @@ OverlapLoss::computeMaxGroundTruthOverlap(const Slice& slice) {
 	else
 		setDifference = slice.getComponent()->getSize();
 
-	return setDifference - maxOverlap;
+	return _setDifferenceScale*setDifference - maxOverlap;
 }

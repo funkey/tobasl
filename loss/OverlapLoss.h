@@ -26,6 +26,8 @@ private:
 
 	// functor to compute overlap between two slices
 	Overlap _overlap;
+
+	double _setDifferenceScale;
 };
 
 #endif // MULTI2CUT_LOSS_OVERLAP_LOSS_H__
