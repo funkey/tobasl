@@ -59,6 +59,28 @@ util::ProgramOption optionFeatureMinMaxFile(
 	                          "use the min and max provided in the given file (first row min, second row max)."
 );
 
+util::ProgramOption optionFeaturePointinessAnglePoints(
+	util::_module           = "multi2cut.features.pointiness",
+	util::_long_name        = "numAnglePoints",
+	util::_description_text = "The number of points to sample equidistantly on the contour of slices. Default is 50.",
+	util::_default_value    = 50
+);
+
+util::ProgramOption optionFeaturePointinessVectorLength(
+	util::_module           = "multi2cut.features.pointiness",
+	util::_long_name        = "angleVectorLength",
+	util::_description_text = "The amount to walk on the contour from a sample point in either direction, to estimate the angle. Values are between "
+	                          "0 (at the sample point) and 1 (at the next sample point). Default is 0.1.",
+	util::_default_value    = 0.1
+);
+
+util::ProgramOption optionFeaturePointinessHistogramBins(
+	util::_module           = "multi2cut.features.pointiness",
+	util::_long_name        = "numHistogramBins",
+	util::_description_text = "The number of histogram bins for the measured angles. Default is 16.",
+	util::_default_value    = 16
+);
+
 FeatureExtractor::FeatureExtractor() {
 
 	registerInput(_slices, "slices");
@@ -104,42 +126,12 @@ FeatureExtractor::updateOutputs() {
 		p.computeRegionprops = optionShapeFeatures;
 		if (optionNoCoordinatesStatistics)
 			p.statisticsParameters.computeCoordinateStatistics = false;
+		p.regionpropsParameters.numAnglePoints = optionFeaturePointinessAnglePoints;
+		p.regionpropsParameters.contourVecAsArcSegmentRatio = optionFeaturePointinessVectorLength;
+		p.regionpropsParameters.numAngleHistBins = optionFeaturePointinessHistogramBins;
 		RegionFeatures<2, float, bool> regionFeatures(rawSliceImage, labelImage, p);
 
 		regionFeatures.fill(adaptor);
-
-		if (slice->getId()==5) {
-			LOG_USER(featureextractorlog)
-						<< "Started extracting regionFeatures for slice ID: "
-						<< slice->getId()
-						<< std::endl;
-			//std::vector<double>& features = _features->getFeatures(slice->getId());
-			LOG_USER(featureextractorlog)
-						<< _features->getFeatures(slice->getId())
-						<< std::endl;
-		}
-
-		if (slice->getId()==3) {
-			LOG_USER(featureextractorlog)
-						<< "Started extracting regionFeatures for slice ID: "
-						<< slice->getId()
-						<< std::endl;
-			//std::vector<double>& features = _features->getFeatures(slice->getId());
-			LOG_USER(featureextractorlog)
-						<< _features->getFeatures(slice->getId())
-						<< std::endl;
-		}
-
-		if (slice->getId()==28) {
-			LOG_USER(featureextractorlog)
-						<< "Started extracting regionFeatures for slice ID: "
-						<< slice->getId()
-						<< std::endl;
-			//std::vector<double>& features = _features->getFeatures(slice->getId());
-			LOG_USER(featureextractorlog)
-						<< _features->getFeatures(slice->getId())
-						<< std::endl;
-		}
 
 		if (optionProbabilityImageFeatures) {
 
