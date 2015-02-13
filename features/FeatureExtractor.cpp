@@ -84,7 +84,6 @@ FeatureExtractor::updateOutputs() {
 			<< " slices" << std::endl;
 
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
-
 		// the bounding box of the slice in the raw image
 		const util::rect<unsigned int>& sliceBoundingBox = slice->getComponent()->getBoundingBox();
 
@@ -108,6 +107,39 @@ FeatureExtractor::updateOutputs() {
 		RegionFeatures<2, float, bool> regionFeatures(rawSliceImage, labelImage, p);
 
 		regionFeatures.fill(adaptor);
+
+		if (slice->getId()==5) {
+			LOG_USER(featureextractorlog)
+						<< "Started extracting regionFeatures for slice ID: "
+						<< slice->getId()
+						<< std::endl;
+			//std::vector<double>& features = _features->getFeatures(slice->getId());
+			LOG_USER(featureextractorlog)
+						<< _features->getFeatures(slice->getId())
+						<< std::endl;
+		}
+
+		if (slice->getId()==3) {
+			LOG_USER(featureextractorlog)
+						<< "Started extracting regionFeatures for slice ID: "
+						<< slice->getId()
+						<< std::endl;
+			//std::vector<double>& features = _features->getFeatures(slice->getId());
+			LOG_USER(featureextractorlog)
+						<< _features->getFeatures(slice->getId())
+						<< std::endl;
+		}
+
+		if (slice->getId()==28) {
+			LOG_USER(featureextractorlog)
+						<< "Started extracting regionFeatures for slice ID: "
+						<< slice->getId()
+						<< std::endl;
+			//std::vector<double>& features = _features->getFeatures(slice->getId());
+			LOG_USER(featureextractorlog)
+						<< _features->getFeatures(slice->getId())
+						<< std::endl;
+		}
 
 		if (optionProbabilityImageFeatures) {
 
@@ -217,6 +249,8 @@ FeatureExtractor::updateOutputs() {
 					<< "and"
 					<<  std::endl << max << std::endl;
 
+
+
 			_features->normalize(min, max);
 
 		} else {
@@ -226,6 +260,7 @@ FeatureExtractor::updateOutputs() {
 	}
 
 	// postprocessing
+
 
 	if (optionAddFeatureSquares || optionAddPairwiseFeatureProducts) {
 
