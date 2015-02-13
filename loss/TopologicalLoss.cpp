@@ -23,20 +23,20 @@ TopologicalLoss::updateOutputs() {
 		// get the plain split and merge costs
 		foreach (boost::shared_ptr<SlicesTree::Node> root, _slices[i]->getRoots())
 			traverse(root, *_bestEffort[i]);
-
-		// normalize them to be in [0,1)
-		double topologicalUpperBound = 0;
-		unsigned int id;
-		double costs;
-		foreach (boost::tie(id, costs), *_lossFunction)
-			topologicalUpperBound += costs;
-		foreach (boost::tie(id, costs), *_lossFunction)
-			(*_lossFunction)[id] /= topologicalUpperBound;
-
-		LOG_DEBUG(topologicallosslog)
-				<< "upper bound on topological costs is "
-				<< topologicalUpperBound << std::endl;
 	}
+
+	// normalize them to be in [0,1)
+	double topologicalUpperBound = 0;
+	unsigned int id;
+	double costs;
+	foreach (boost::tie(id, costs), *_lossFunction)
+		topologicalUpperBound += costs;
+	foreach (boost::tie(id, costs), *_lossFunction)
+		(*_lossFunction)[id] /= topologicalUpperBound;
+
+	LOG_DEBUG(topologicallosslog)
+			<< "upper bound on topological costs is "
+			<< topologicalUpperBound << std::endl;
 
 	// set a reward of -1 for the best-effort
 	foreach (boost::shared_ptr<Slices> slices, _bestEffort) {

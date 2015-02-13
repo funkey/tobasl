@@ -22,7 +22,8 @@ public:
 
 	RandomPerturbation(ScoringFunctionType& scoringFunction) :
 		_scoringFunction(scoringFunction),
-		_normalDistribution(0, optionRandomPerturbationStdDev.as<double>()) {
+		_normalDistribution(0, 1),
+		_stdDev(optionRandomPerturbationStdDev) {
 
 			LOG_USER(randomperturbationlog)
 					<< "randomly perturb edge scores with stddev "
@@ -39,6 +40,8 @@ public:
 		double uniform = (double)rand()/RAND_MAX;
 		double pertubation = boost::math::quantile(_normalDistribution, uniform);
 
+		pertubation = pertubation*_stdDev*1.0/gridEdges.size();
+
 		return score + pertubation;
 	}
 
@@ -51,6 +54,9 @@ private:
 
 	ScoringFunctionType&               _scoringFunction;
 	boost::math::normal_distribution<> _normalDistribution;
+
+	// the baseline stddev
+	double _stdDev;
 };
 
 #endif // MULTI2CUT_MERGETREE_RANDOM_PERTURBATION_H__

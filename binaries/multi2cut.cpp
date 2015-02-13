@@ -12,12 +12,12 @@
 #include <util/helpers.hpp>
 
 #include <features/FeatureExtractor.h>
-#include <io/MergeTreeReader.h>
-#include <io/MultiMergeTreeReader.h>
+#include <io/ReadMergeTreePipeline.h>
 #include <io/FeatureWeightsReader.h>
 #include <io/SolutionWriter.h>
 #include <io/SlicesWriter.h>
 #include <io/LearningProblemWriter.h>
+#include <slices/SlicesCollector.h>
 #include <inference/LinearSliceCostFunction.h>
 #include <inference/ProblemAssembler.h>
 #include <inference/LinearSolver.h>
@@ -27,6 +27,7 @@
 #include <loss/SliceDistanceLoss.h>
 #include <loss/ContourDistanceLoss.h>
 #include <loss/OverlapLoss.h>
+#include <loss/LossCollector.h>
 
 using namespace logger;
 
@@ -51,24 +52,17 @@ util::ProgramOption optionProbabilityImage(
 util::ProgramOption optionGroundTruth(
 		util::_long_name        = "groundTruth",
 		util::_short_name       = "g",
-		util::_description_text = "An image representing the ground truth segmentation.",
-		util::_default_value    = "groundtruth.png");
+		util::_description_text = "An image representing the ground truth segmentation.");
 
 util::ProgramOption optionWriteLearningProblem(
 		util::_long_name        = "writeLearningProblem",
 		util::_short_name       = "l",
 		util::_description_text = "Instead of performing inference, write a learning problem for sbmrm.");
 
-util::ProgramOption optionBestEffortLoss(
-		util::_long_name        = "bestEffortLoss",
-		util::_description_text = "The candidate loss function to use to find the best-effort for learning. Valid values are: "
-		                          "'contourdistance', 'overlap' (default), and 'slicedistance'.",
-		util::_default_value    = "overlap");
-
 util::ProgramOption optionSliceLoss(
 		util::_long_name        = "sliceLoss",
 		util::_description_text = "The candidate loss function to use as Δ for learning. Valid values are: "
-		                          "'topological' (default), 'hamming', 'best-effort' (same as bestEffortLoss), 'contourdistance', 'overlap', and 'slicedistance'.",
+		                          "'topological' (default), 'hamming', 'contourdistance', 'overlap', and 'slicedistance'.",
 		util::_default_value    = "topological");
 
 boost::shared_ptr<pipeline::SimpleProcessNode<> >
@@ -97,8 +91,8 @@ getLoss(
 		loss = boost::make_shared<TopologicalLoss>();
 
 		// only for SliceTrees!
-		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+		loss->addInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->addInput("best effort", bestEffortReconstructor->getOutput("slices"));
 
 	} else if (name == "hamming") {
 
@@ -111,7 +105,7 @@ getLoss(
 		loss = boost::make_shared<HammingLoss>();
 
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+		loss->setInput("best effort", bestEffortReconstructor->getOutput("slices"));
 
 	} else if (name == "contourdistance") {
 
@@ -150,7 +144,7 @@ getLoss(
 		// combine the slice distance loss with Hamming (otherwise, 
 		// selecting nothing minimizes the loss)
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->setInput("best effort", bestEffortReconstructor->getOutput());
+		loss->setInput("best effort", bestEffortReconstructor->getOutput("slices"));
 		loss->setInput("base loss function", sliceDistanceLoss->getOutput());
 
 	} else {
@@ -180,23 +174,66 @@ int main(int optionc, char** optionv) {
 		LOG_USER(out) << "[main] starting..." << std::endl;
 
 		boost::filesystem::path mergeTree(optionMergeTreeImage.as<std::string>());
-		bool multiMergeTrees = boost::filesystem::is_directory(mergeTree);
+		std::vector<boost::filesystem::path> mergeTreeFiles;
 
-		if (multiMergeTrees) {
+		if (boost::filesystem::is_directory(mergeTree)) {
 
 			LOG_USER(out) << "[main] reading multiple merge tree images" << std::endl;
+
+			std::copy(
+					boost::filesystem::directory_iterator(mergeTree),
+					boost::filesystem::directory_iterator(),
+					back_inserter(mergeTreeFiles));
+			std::sort(mergeTreeFiles.begin(), mergeTreeFiles.end());
 
 		} else {
 
 			LOG_USER(out) << "[main] reading a single merge tree image" << std::endl;
+
+			mergeTreeFiles.push_back(mergeTree);;
 		}
 
-		boost::shared_ptr<pipeline::SimpleProcessNode<> > mergeTreeReader;
+		std::vector<pipeline::Process<ReadMergeTreePipeline> > mergeTreeReaders;
 
-		if (multiMergeTrees)
-			mergeTreeReader = boost::make_shared<MultiMergeTreeReader>(optionMergeTreeImage.as<std::string>());
-		else
-			mergeTreeReader = boost::make_shared<MergeTreeReader>(optionMergeTreeImage.as<std::string>());
+		// create a ground truth slice extractor, if ground truth was given
+		pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false);
+		if (optionGroundTruth) {
+
+			pipeline::Process<ImageReader> groundTruthReader(optionGroundTruth.as<std::string>());
+			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
+		}
+
+		// create a collector for all merge tree slices
+		boost::shared_ptr<pipeline::ProcessNode> slicesCollector;
+
+		if (mergeTreeFiles.size() > 1)
+			slicesCollector = boost::make_shared<SlicesCollector>();
+
+		// for each merge tree file create a read pipeline
+		foreach (boost::filesystem::path mergeTreeFile, mergeTreeFiles) {
+
+			if (boost::filesystem::is_directory(mergeTreeFile))
+				continue;
+
+			pipeline::Process<ReadMergeTreePipeline> mergeTreeReader(
+					mergeTreeFile.string(),
+					optionGroundTruth);
+
+			if (optionGroundTruth)
+				mergeTreeReader->setInput("ground truth slices", gtSliceExtractor->getOutput());
+
+			mergeTreeReaders.push_back(mergeTreeReader);
+
+			if (mergeTreeFiles.size() > 1) {
+
+				slicesCollector->addInput("slices", mergeTreeReader->getOutput("slices"));
+				slicesCollector->addInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
+
+			} else {
+
+				slicesCollector = mergeTreeReader.getOperator();
+			}
+		}
 
 		pipeline::Process<ImageReader>      rawImageReader(optionRawImage.as<std::string>());
 		pipeline::Process<ImageReader>      probabilityImageReader(optionProbabilityImage.as<std::string>());
@@ -206,7 +243,7 @@ int main(int optionc, char** optionv) {
 		unsigned int width  = image->width();
 		unsigned int height = image->height();
 
-		featureExtractor->setInput("slices", mergeTreeReader->getOutput("slices"));
+		featureExtractor->setInput("slices", slicesCollector->getOutput("slices"));
 		featureExtractor->setInput("raw image", rawImageReader->getOutput());
 		featureExtractor->setInput("probability image", probabilityImageReader->getOutput());
 
@@ -216,61 +253,61 @@ int main(int optionc, char** optionv) {
 			 * LEARNING PIPELINE *
 			 *********************/
 
-			// get the best-effort solution
+			// create a single best-effort solution (needed for structured 
+			// learning)
 
-			pipeline::Process<ImageReader>                    groundTruthReader(optionGroundTruth.as<std::string>());
-			pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false);
-			pipeline::Process<ProblemAssembler>               bestEffortProblem;
-			pipeline::Process<LinearSolver>                   bestEffortSolver;
-			pipeline::Process<Reconstructor>                  bestEffortReconstructor;
-			pipeline::Process<SolutionWriter>                 solutionWriter(width, height, "output_images/best-effort.tif");
+			// the loss will be the combined loss from all merge tree readers
+			pipeline::Process<LossCollector> bestEffortLossFunction;
+			foreach (pipeline::Process<ReadMergeTreePipeline> mergeTreeReader, mergeTreeReaders)
+				bestEffortLossFunction->addInput(mergeTreeReader->getOutput("best effort loss function"));
 
-			LOG_USER(out) << "creating best-effort loss..." << std::endl;
-			boost::shared_ptr<pipeline::ProcessNode> bestEffortLossFunction =
-					getLoss(
-							optionBestEffortLoss,
-							multiMergeTrees,
-							mergeTreeReader,
-							gtSliceExtractor.getOperator());
-
-			gtSliceExtractor->setInput("membrane", groundTruthReader->getOutput());
-			bestEffortProblem->setInput("slices", mergeTreeReader->getOutput("slices"));
-			bestEffortProblem->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
+			pipeline::Process<ProblemAssembler> bestEffortProblem;
+			bestEffortProblem->setInput("slices", slicesCollector->getOutput("slices"));
+			bestEffortProblem->setInput("conflict sets", slicesCollector->getOutput("conflict sets"));
 			bestEffortProblem->setInput("slice loss", bestEffortLossFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
 			linearSolverParameters->setVariableType(Binary);
+			pipeline::Process<LinearSolver> bestEffortSolver;
 			bestEffortSolver->setInput("objective", bestEffortProblem->getOutput("objective"));
 			bestEffortSolver->setInput("linear constraints", bestEffortProblem->getOutput("linear constraints"));
 			bestEffortSolver->setInput("parameters", linearSolverParameters);
 
-			bestEffortReconstructor->setInput("slices", mergeTreeReader->getOutput());
+			pipeline::Process<Reconstructor> bestEffortReconstructor;
+			bestEffortReconstructor->setInput("slices", slicesCollector->getOutput());
 			bestEffortReconstructor->setInput("slice variable map", bestEffortProblem->getOutput("slice variable map"));
 			bestEffortReconstructor->setInput("solution", bestEffortSolver->getOutput("solution"));
 
+			// create a learning loss function
 			boost::shared_ptr<pipeline::ProcessNode> loss;
 
 			LOG_USER(out) << "creating slice loss..." << std::endl;
-			if (optionSliceLoss.as<std::string>() == "best-effort") {
+			if (optionSliceLoss.as<std::string>() == "topological" && mergeTreeReaders.size() > 1) {
 
-				loss = bestEffortLossFunction;
-				LOG_USER(out) << "use the same as best-effort" << std::endl;
+				LOG_USER(out) << "using loss TopologicalLoss, once for each merge tree" << std::endl;
+
+				loss = boost::make_shared<TopologicalLoss>();
+				foreach (pipeline::Process<ReadMergeTreePipeline> mergeTreeReader, mergeTreeReaders) {
+
+					loss->addInput("slices", mergeTreeReader->getOutput("slices"));
+					loss->addInput("best effort", mergeTreeReader->getOutput("best effort slices"));
+				}
 
 			} else {
 
 				loss =
 					getLoss(
 							optionSliceLoss,
-							multiMergeTrees,
-							mergeTreeReader,
+							(mergeTreeReaders.size() > 1),
+							slicesCollector,
 							gtSliceExtractor.getOperator(),
 							bestEffortReconstructor.getOperator());
 			}
 
 			pipeline::Process<LearningProblemWriter> writer("learning_problem");
 
-			writer->setInput("slices", mergeTreeReader->getOutput("slices"));
-			writer->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
+			writer->setInput("slices", slicesCollector->getOutput("slices"));
+			writer->setInput("conflict sets", slicesCollector->getOutput("conflict sets"));
 			writer->setInput("features", featureExtractor->getOutput());
 			writer->setInput("best effort", bestEffortReconstructor->getOutput());
 			writer->setInput("loss function", loss->getOutput());
@@ -294,14 +331,26 @@ int main(int optionc, char** optionv) {
 						IOError,
 						"\"" << directory << "\" is not a directory");
 
-			// show the best effort solution
+			// save the indvidual best effort solutions
+			unsigned int i = 0;
+			foreach (pipeline::Process<ReadMergeTreePipeline> mergeTreeReader, mergeTreeReaders) {
+
+				std::string filename = std::string("output_images/best-effort_") + boost::lexical_cast<std::string>(i) + ".tif";
+				pipeline::Process<SolutionWriter> solutionWriter(width, height, filename);
+				solutionWriter->setInput("solution", mergeTreeReader->getOutput("best effort slices"));
+				solutionWriter->write();
+				i++;
+			}
+
+			// save the overall best-effort solution
+			std::string filename = "output_images/best-effort.tif";
+			pipeline::Process<SolutionWriter> solutionWriter(width, height, filename);
 			solutionWriter->setInput("solution", bestEffortReconstructor->getOutput());
 			solutionWriter->write();
 
-
 			// store slices and their offsets
 			pipeline::Process<SlicesWriter> slicesWriter("output_images/slices");
-			slicesWriter->setInput(mergeTreeReader->getOutput("slices"));
+			slicesWriter->setInput(slicesCollector->getOutput("slices"));
 			slicesWriter->write();
 
 		} else {
@@ -317,12 +366,12 @@ int main(int optionc, char** optionv) {
 			pipeline::Process<Reconstructor>           reconstructor;
 			pipeline::Process<SolutionWriter>          solutionWriter(width, height, "output_images/solution.tif");
 
-			sliceCostFunction->setInput("slices", mergeTreeReader->getOutput("slices"));
+			sliceCostFunction->setInput("slices", slicesCollector->getOutput("slices"));
 			sliceCostFunction->setInput("features", featureExtractor->getOutput());
 			sliceCostFunction->setInput("feature weights", featureWeightsReader->getOutput());
 
-			problemAssembler->setInput("slices", mergeTreeReader->getOutput("slices"));
-			problemAssembler->setInput("conflict sets", mergeTreeReader->getOutput("conflict sets"));
+			problemAssembler->setInput("slices", slicesCollector->getOutput("slices"));
+			problemAssembler->setInput("conflict sets", slicesCollector->getOutput("conflict sets"));
 			problemAssembler->setInput("slice costs", sliceCostFunction->getOutput());
 
 			pipeline::Value<LinearSolverParameters> linearSolverParameters;
@@ -331,7 +380,7 @@ int main(int optionc, char** optionv) {
 			linearSolver->setInput("linear constraints", problemAssembler->getOutput("linear constraints"));
 			linearSolver->setInput("parameters", linearSolverParameters);
 
-			reconstructor->setInput("slices", mergeTreeReader->getOutput());
+			reconstructor->setInput("slices", slicesCollector->getOutput());
 			reconstructor->setInput("slice variable map", problemAssembler->getOutput("slice variable map"));
 			reconstructor->setInput("solution", linearSolver->getOutput("solution"));
 
