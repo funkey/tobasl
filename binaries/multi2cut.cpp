@@ -92,7 +92,7 @@ getLoss(
 
 		// only for SliceTrees!
 		loss->addInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->addInput("best effort", bestEffortReconstructor->getOutput("slices"));
+		loss->addInput("best effort", bestEffortReconstructor->getOutput("reconstruction"));
 
 	} else if (name == "hamming") {
 
@@ -105,7 +105,7 @@ getLoss(
 		loss = boost::make_shared<HammingLoss>();
 
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->setInput("best effort", bestEffortReconstructor->getOutput("slices"));
+		loss->setInput("best effort", bestEffortReconstructor->getOutput("reconstruction"));
 
 	} else if (name == "contourdistance") {
 
@@ -144,7 +144,7 @@ getLoss(
 		// combine the slice distance loss with Hamming (otherwise, 
 		// selecting nothing minimizes the loss)
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
-		loss->setInput("best effort", bestEffortReconstructor->getOutput("slices"));
+		loss->setInput("best effort", bestEffortReconstructor->getOutput("reconstruction"));
 		loss->setInput("base loss function", sliceDistanceLoss->getOutput());
 
 	} else {
