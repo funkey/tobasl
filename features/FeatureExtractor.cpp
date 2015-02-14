@@ -279,6 +279,10 @@ FeatureExtractor::updateOutputs() {
 		}
 	}
 
+	// append a 1 for bias
+	foreach (boost::shared_ptr<Slice> slice, *_slices)
+		_features->getFeatures(slice->getId()).push_back(1);
+
 	LOG_USER(featureextractorlog)
 			<< "after postprocessing, we have "
 			<< _features->getFeatures((*_slices->begin())->getId()).size()
