@@ -54,6 +54,7 @@ SlicesCollector::updateOutputs() {
 	}
 
 	LOG_USER(slicescollectorlog) << "removed " << sliceCopies.size() << " duplicates" << std::endl;
+	LOG_USER(slicescollectorlog) << "adding new constraints..." << std::flush;
 
 	// copy conflict sets, map slice ids of duplicates
 	foreach (boost::shared_ptr<ConflictSets> conflictSets, _conflictSets) {
@@ -73,6 +74,8 @@ SlicesCollector::updateOutputs() {
 			_allConflictSets->add(mapped);
 		}
 	}
+
+	LOG_USER(slicescollectorlog) << "done." << std::endl;
 
 	// create new conflict sets
 	for (unsigned int i = 0; i < _slices.size(); i++)
