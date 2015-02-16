@@ -4,6 +4,7 @@
 #include <pipeline/SimpleProcessNode.h>
 #include <slices/Slices.h>
 #include <features/Distance.h>
+#include <features/Diameter.h>
 #include "LossFunction.h"
 
 class SliceDistanceLoss : public pipeline::SimpleProcessNode<> {
@@ -25,6 +26,7 @@ private:
 	double _maxSliceDistance;
 
 	Distance _sliceDistance;
+	Diameter _sliceDiameter;
 };
 
 #endif // MULTI2CUT_LOSS_SLICE_DISTANCE_LOSS_H__

@@ -29,7 +29,7 @@ SliceDistanceLoss::getLoss(const Slice& slice) {
 	std::vector<boost::shared_ptr<Slice> > gtSlices =
 			_groundTruth->find(slice.getComponent()->getCenter(), _maxSliceDistance);
 
-	double minDistance = std::numeric_limits<double>::infinity();
+	double minDistance = _sliceDiameter(slice);
 
 	// for all slices in a threshold distance
 	foreach (boost::shared_ptr<Slice> gtSlice, gtSlices) {
