@@ -13,6 +13,7 @@
 #include <util/helpers.hpp>
 #include <vigra/impex.hxx>
 #include <vigra/multi_array.hxx>
+#include <vigra/slic.hxx>
 #include <mergetree/IterativeRegionMerging.h>
 #include <mergetree/MedianEdgeIntensity.h>
 #include <mergetree/SmallFirst.h>
@@ -29,6 +30,20 @@ util::ProgramOption optionMergeTreeImage(
 		util::_short_name       = "m",
 		util::_description_text = "An image representing the merge tree.",
 		util::_default_value    = "mergetree.png");
+
+util::ProgramOption optionSlicSuperpixels(
+		util::_long_name        = "slicSuperpixels",
+		util::_description_text = "Use SLIC superpixels instead of watersheds to obtain initial regions.");
+
+util::ProgramOption optionSlicIntensityScaling(
+		util::_long_name        = "slicIntensityScaling",
+		util::_description_text = "How to scale the image intensity for comparison to spatial distance. Default is 1.0.",
+		util::_default_value    = 1.0);
+
+util::ProgramOption optionSliceSize(
+		util::_long_name        = "slicSize",
+		util::_description_text = "An upper limit on the SLIC superpixel size. Default is 10.",
+		util::_default_value    = 10);
 
 util::ProgramOption optionRandomPerturbation(
 		util::_long_name        = "randomPerturbation",
@@ -76,15 +91,30 @@ int main(int optionc, char** optionv) {
 		// read image
 		vigra::MultiArray<2, float> image = readImage(optionSourceImage);
 
-		// perform watersheds
+		// perform watersheds or find SLIC superpixels
 		vigra::MultiArray<2, int> initialRegions(image.shape());
-		unsigned int maxLabel = vigra::watershedsMultiArray(
-				image,
-				initialRegions,
-				vigra::DirectNeighborhood,
-				vigra::WatershedOptions().seedOptions(vigra::SeedOptions().extendedMinima()));
 
-		LOG_USER(logger::out) << "found " << maxLabel << " watershed regions" << std::endl;
+		if (optionSlicSuperpixels) {
+
+			unsigned int maxLabel = vigra::slicSuperpixels(
+					image,
+					initialRegions,
+					optionSlicIntensityScaling.as<double>(),
+					optionSliceSize.as<double>(),
+					vigra::SlicOptions().iterations(100));
+
+			LOG_USER(logger::out) << "found " << maxLabel << " SLIC superpixels" << std::endl;
+
+		} else {
+
+			unsigned int maxLabel = vigra::watershedsMultiArray(
+					image,
+					initialRegions,
+					vigra::DirectNeighborhood,
+					vigra::WatershedOptions().seedOptions(vigra::SeedOptions().extendedMinima()));
+
+			LOG_USER(logger::out) << "found " << maxLabel << " watershed regions" << std::endl;
+		}
 
 		// extract merge tree
 		IterativeRegionMerging merging(initialRegions);
