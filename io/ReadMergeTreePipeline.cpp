@@ -3,13 +3,17 @@
 #include <pipeline/Value.h>
 #include <util/ProgramOptions.h>
 #include <util/Logger.h>
+#include <loss/SliceDistanceLoss.h>
+#include <loss/ContourDistanceLoss.h>
+#include <loss/OverlapLoss.h>
+#include <loss/SloppyGroundTruthLoss.h>
 
 logger::LogChannel readmergetreepipelinelog("readmergetreepipelinelog", "[ReadMergeTreePipeline] ");
 
 util::ProgramOption optionBestEffortLoss(
 		util::_long_name        = "bestEffortLoss",
 		util::_description_text = "The candidate loss function to use to find the best-effort for learning. Valid values are: "
-		                          "'contourdistance', 'overlap' (default), and 'slicedistance'.",
+		                          "'contourdistance', 'overlap' (default), 'sloppy' (for sloppy ground truth), and 'slicedistance'.",
 		util::_default_value    = "overlap");
 
 ReadMergeTreePipeline::ReadMergeTreePipeline(
@@ -72,6 +76,14 @@ ReadMergeTreePipeline::getLoss(std::string name) {
 
 		LOG_USER(readmergetreepipelinelog) << "using slice loss OverlapLoss" << std::endl;
 		loss = boost::make_shared<OverlapLoss>();
+
+		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
+		loss->setInput("ground truth", _gtSlices);
+
+	} else if (name == "sloppy") {
+
+		LOG_USER(readmergetreepipelinelog) << "using slice loss SloppyGroundTruthLoss" << std::endl;
+		loss = boost::make_shared<SloppyGroundTruthLoss>();
 
 		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
 		loss->setInput("ground truth", _gtSlices);

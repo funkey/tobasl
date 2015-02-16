@@ -128,6 +128,12 @@ IterativeRegionMerging::createMergeTree(ScoringFunction& scoringFunction) {
 				<< " into " << _rag.id(merged) << std::endl;
 	}
 
+	LOG_USER(mergetreelog) << "finished merging" << std::endl;
+	LOG_DEBUG(mergetreelog)
+			<< "_ragToGridEdges contains "
+			<< _ragToGridEdges.size() << " elements, with an overhead of "
+			<< _ragToGridEdges.overhead() << std::endl;
+
 	finishMergeTree();
 }
 
