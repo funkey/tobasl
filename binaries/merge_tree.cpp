@@ -17,6 +17,7 @@
 #include <mergetree/IterativeRegionMerging.h>
 #include <mergetree/MedianEdgeIntensity.h>
 #include <mergetree/SmallFirst.h>
+#include <mergetree/MultiplyMinRegionSize.h>
 #include <mergetree/RandomPerturbation.h>
 
 util::ProgramOption optionSourceImage(
@@ -44,6 +45,10 @@ util::ProgramOption optionSliceSize(
 		util::_long_name        = "slicSize",
 		util::_description_text = "An upper limit on the SLIC superpixel size. Default is 10.",
 		util::_default_value    = 10);
+
+util::ProgramOption optionMergeSmallRegionsFirst(
+		util::_long_name        = "mergeSmallRegionsFirst",
+		util::_description_text = "Merge small regions first. For parameters, see smallRegionThreshold1, smallRegionThreshold2, and intensityThreshold.");
 
 util::ProgramOption optionRandomPerturbation(
 		util::_long_name        = "randomPerturbation",
@@ -120,20 +125,42 @@ int main(int optionc, char** optionv) {
 		IterativeRegionMerging merging(initialRegions);
 
 		MedianEdgeIntensity mei(image);
-		SmallFirst<MedianEdgeIntensity> scoringFunction(
-				merging.getRag(),
-				image,
-				initialRegions,
-				mei);
 
-		if (optionRandomPerturbation) {
+		if (optionMergeSmallRegionsFirst) {
 
-			RandomPerturbation<SmallFirst<MedianEdgeIntensity> > rp(scoringFunction);
-			merging.createMergeTree(rp);
+			SmallFirst<MedianEdgeIntensity> scoringFunction(
+					merging.getRag(),
+					image,
+					initialRegions,
+					mei);
+
+			if (optionRandomPerturbation) {
+
+				RandomPerturbation<SmallFirst<MedianEdgeIntensity> > rp(scoringFunction);
+				merging.createMergeTree(rp);
+
+			} else {
+
+				merging.createMergeTree(scoringFunction);
+			}
 
 		} else {
 
-			merging.createMergeTree(scoringFunction);
+			MultiplyMinRegionSize<MedianEdgeIntensity> scoringFunction(
+					merging.getRag(),
+					image,
+					initialRegions,
+					mei);
+
+			if (optionRandomPerturbation) {
+
+				RandomPerturbation<MultiplyMinRegionSize<MedianEdgeIntensity> > rp(scoringFunction);
+				merging.createMergeTree(rp);
+
+			} else {
+
+				merging.createMergeTree(scoringFunction);
+			}
 		}
 
 		LOG_USER(logger::out) << "writing merge tree..." << std::endl;
