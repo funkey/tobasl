@@ -203,7 +203,9 @@ IterativeRegionMerging::mergeRegions(
 			// get the neighbor
 			RagType::Node neighbor = (_rag.u(*edge) == child ? _rag.v(*edge) : _rag.u(*edge));
 
-			if (neighbor == other)
+			// don't consider the node we currently merge with, and all 
+			// previously merged nodes
+			if (neighbor == other || _parentNodes[neighbor] != lemon::INVALID)
 				continue;
 
 			neighbors.push_back(neighbor);
@@ -226,6 +228,10 @@ IterativeRegionMerging::mergeRegions(
 					_ragToGridEdges[neighborEdge].begin(),
 					_ragToGridEdges[neighborEdge].end(),
 					std::back_inserter(_ragToGridEdges[newEdge]));
+
+			// clear the affiliated edges to save memory -- they are not needed 
+			// anymore
+			_ragToGridEdges[neighborEdge].clear();
 
 			newEdges.push_back(newEdge);
 		}
