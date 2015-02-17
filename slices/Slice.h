@@ -54,11 +54,29 @@ public:
 
 	bool operator==(const Slice& other) const;
 
+	/**
+	 * Get and set the level at which this slice was extracted from a component 
+	 * tree.
+	 */
+	void setLevel(unsigned int level) { _level = level; }
+	unsigned int getLevel() { return _level; }
+
+	/**
+	 * Get and set the number of descendants of this slice in the component 
+	 * tree.
+	 */
+	void setNumDescendants(unsigned int numDescendants) { _numDescendants = numDescendants; }
+	unsigned int getNumDescendants() { return _numDescendants; }
+
 private:
 
 	unsigned int _id;
 
 	unsigned int _section;
+
+	unsigned int _level;
+
+	unsigned int _numDescendants;
 
 	boost::shared_ptr<ConnectedComponent> _component;
 };

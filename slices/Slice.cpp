@@ -10,7 +10,9 @@ Slice::Slice(
 		boost::shared_ptr<ConnectedComponent> component) :
 	_id(id),
 	_section(section),
-	_component(component) {}
+	_component(component),
+	_level(0),
+	_numDescendants(0) {}
 
 unsigned int
 Slice::getId() const {

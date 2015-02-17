@@ -69,6 +69,17 @@ SlicesTree::leaveChild() {
 
 		 LOG_DEBUG(slicestreelog) << "current node was " << _current->getSlice()->getId() << std::endl;
 
+		// set child level and number of descendants
+		unsigned int maxChildLevel  = 0;
+		unsigned int numDescendants = 0;
+		foreach (boost::shared_ptr<SlicesTree::Node> child, _current->getChildren()) {
+
+			maxChildLevel   = std::max(maxChildLevel, child->getSlice()->getLevel());
+			numDescendants += child->getSlice()->getNumDescendants() + 1;
+		}
+		_current->getSlice()->setLevel(maxChildLevel + 1);
+		_current->getSlice()->setNumDescendants(numDescendants);
+
 		_current = _current->getParent();
 
 		if (_current) {

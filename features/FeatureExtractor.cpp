@@ -105,6 +105,20 @@ FeatureExtractor::updateOutputs() {
 			<< _slices->size()
 			<< " slices" << std::endl;
 
+	//////////////////////////
+	// TOPOLOGICAL FEATURES //
+	//////////////////////////
+
+	foreach (boost::shared_ptr<Slice> slice, *_slices) {
+
+		_features->append(slice->getId(), slice->getLevel());
+		_features->append(slice->getId(), slice->getNumDescendants());
+	}
+
+	/////////////////////
+	// REGION FEATURES //
+	/////////////////////
+
 	foreach (boost::shared_ptr<Slice> slice, *_slices) {
 		// the bounding box of the slice in the raw image
 		const util::rect<unsigned int>& sliceBoundingBox = slice->getComponent()->getBoundingBox();
@@ -183,7 +197,10 @@ FeatureExtractor::updateOutputs() {
 			<< _features->getFeatures((*_slices->begin())->getId()).size()
 			<< " features" << std::endl;
 
-	// normalization 
+	///////////////////
+	// NORMALIZATION //
+	///////////////////
+
 	if (optionNormalize) {
 
 		LOG_USER(featureextractorlog) << "normalizing features" << std::endl;
@@ -251,8 +268,9 @@ FeatureExtractor::updateOutputs() {
 		}
 	}
 
-	// postprocessing
-
+	////////////////////
+	// POSTPROCESSING //
+	////////////////////
 
 	if (optionAddFeatureSquares || optionAddPairwiseFeatureProducts) {
 
@@ -281,7 +299,7 @@ FeatureExtractor::updateOutputs() {
 
 	// append a 1 for bias
 	foreach (boost::shared_ptr<Slice> slice, *_slices)
-		_features->getFeatures(slice->getId()).push_back(1);
+		_features->append(slice->getId(), 1);
 
 	LOG_USER(featureextractorlog)
 			<< "after postprocessing, we have "
