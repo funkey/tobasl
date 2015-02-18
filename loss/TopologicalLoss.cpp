@@ -1,9 +1,38 @@
 #include <util/Logger.h>
+#include <util/ProgramOptions.h>
 #include "TopologicalLoss.h"
 
 logger::LogChannel topologicallosslog("topologicallosslog", "[TopologicalLoss] ");
 
-TopologicalLoss::TopologicalLoss() {
+util::ProgramOption optionTopologicalLossWeightSplit(
+		util::_module           = "loss.topological",
+		util::_long_name        = "weightSplit",
+		util::_description_text = "The weight of a split error in the topological loss. Default is 1.0.",
+		util::_default_value    = 1.0);
+
+util::ProgramOption optionTopologicalLossWeightMerge(
+		util::_module           = "loss.topological",
+		util::_long_name        = "weightMerge",
+		util::_description_text = "The weight of a merge error in the topological loss. Default is 1.0.",
+		util::_default_value    = 1.0);
+
+util::ProgramOption optionTopologicalLossWeightFp(
+		util::_module           = "loss.topological",
+		util::_long_name        = "weightFp",
+		util::_description_text = "The weight of a false positive error in the topological loss. Default is 1.0.",
+		util::_default_value    = 1.0);
+
+util::ProgramOption optionTopologicalLossWeightFn(
+		util::_module           = "loss.topological",
+		util::_long_name        = "weightFn",
+		util::_description_text = "The weight of a false negative error in the topological loss. Default is 1.0.",
+		util::_default_value    = 1.0);
+
+TopologicalLoss::TopologicalLoss() :
+		_weightSplit(optionTopologicalLossWeightSplit),
+		_weightMerge(optionTopologicalLossWeightMerge),
+		_weightFp(optionTopologicalLossWeightFp),
+		_weightFn(optionTopologicalLossWeightFn) {
 
 	registerInputs(_slices, "slices");
 	registerInputs(_bestEffort, "best effort");
@@ -17,37 +46,23 @@ TopologicalLoss::updateOutputs() {
 		_lossFunction = new LossFunction();
 
 	_lossFunction->clear();
+	_constant = 0;
 
+	// for each slices tree
 	for (unsigned int i = 0; i < _slices.size(); i++) {
 
-		// get the plain split and merge costs
+		// get the topological costs
 		foreach (boost::shared_ptr<SlicesTree::Node> root, _slices[i]->getRoots())
-			traverse(root, *_bestEffort[i]);
+			traverseAboveBestEffort(root, *_bestEffort[i]);
 	}
 
-	// normalize them to be in [0,1)
-	double topologicalUpperBound = 0;
-	unsigned int id;
-	double costs;
-	foreach (boost::tie(id, costs), *_lossFunction)
-		topologicalUpperBound += costs;
-	foreach (boost::tie(id, costs), *_lossFunction)
-		(*_lossFunction)[id] /= topologicalUpperBound;
 
-	LOG_DEBUG(topologicallosslog)
-			<< "upper bound on topological costs is "
-			<< topologicalUpperBound << std::endl;
-
-	// set a reward of -1 for the best-effort
-	foreach (boost::shared_ptr<Slices> slices, _bestEffort) {
-
-		foreach (boost::shared_ptr<Slice> slice, *slices)
-			(*_lossFunction)[slice->getId()] = -1;
-	}
+	// set the constant
+	_lossFunction->setConstant(_constant);
 }
 
-double
-TopologicalLoss::traverse(boost::shared_ptr<SlicesTree::Node> node, const Slices& bestEffort) {
+TopologicalLoss::NodeCosts
+TopologicalLoss::traverseAboveBestEffort(boost::shared_ptr<SlicesTree::Node> node, const Slices& bestEffort) {
 
 	boost::shared_ptr<Slice> slice = node->getSlice();
 
@@ -62,8 +77,17 @@ TopologicalLoss::traverse(boost::shared_ptr<SlicesTree::Node> node, const Slices
 
 	if (isBestEffort) {
 
-		assignSplitCosts(node, 0);
-		return 0;
+		NodeCosts bestEffortCosts;
+		bestEffortCosts.split = 0;
+		bestEffortCosts.merge = 0;
+		bestEffortCosts.fp    = 0;
+		bestEffortCosts.fn    = -_weightFn;
+		_constant += _weightFn;
+
+		// this assigns the cost to node and all descendants
+		traverseBelowBestEffort(node, bestEffortCosts);
+
+		return bestEffortCosts;
 	}
 
 	unsigned int numChildren = node->getChildren().size();
@@ -72,33 +96,51 @@ TopologicalLoss::traverse(boost::shared_ptr<SlicesTree::Node> node, const Slices
 
 	if (numChildren == 0) {
 
-		// We are not below best-effort, and we don't have children -- this 
-		// slice belongs to a path that is completely spurious.
+		// We are above best-effort, and we don't have children -- this slice 
+		// belongs to a path that is completely spurious.
 
-		// give it merge costs of 1
-		(*_lossFunction)[slice->getId()] = 1;
-		return 1;
+		// give it false positive costs
+		NodeCosts falsePositiveCosts;
+		falsePositiveCosts.split = 0;
+		falsePositiveCosts.merge = 0;
+		falsePositiveCosts.fp    = _weightFp;
+		falsePositiveCosts.fn    = 0;
+
+		(*_lossFunction)[slice->getId()] = falsePositiveCosts;
+
+		return falsePositiveCosts;
 	}
 
 	// we are above the best effort solution
 
-	// sum the merge costs of the children
-	double childrenMergeCosts = 0;
-	foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren())
-		childrenMergeCosts += traverse(child, bestEffort);
+	// get our node costs from the costs of our children
+	double sumChildMergeCosts = 0;
+	double sumChildFnCosts    = 0;
+	double minChildFpCosts    = std::numeric_limits<double>::infinity();
+	foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren()) {
 
-	// assign merge costs for the current node
-	double mergeCosts = static_cast<double>(numChildren) - 1 + childrenMergeCosts;
+		NodeCosts childCosts = traverseAboveBestEffort(child, bestEffort);
 
-	LOG_DEBUG(topologicallosslog) << "\tthis slice is above best-effort, assign merge costs of " << mergeCosts << std::endl;
+		sumChildMergeCosts += childCosts.merge;
+		sumChildFnCosts    += childCosts.fn;
+		minChildFpCosts     = std::min(minChildFpCosts, childCosts.fp);
+	}
 
-	(*_lossFunction)[slice->getId()] = mergeCosts;
+	NodeCosts costs;
+	costs.split = 0;
+	costs.merge = _weightMerge*(numChildren - 1) + sumChildMergeCosts;
+	costs.fn    = sumChildFnCosts;
+	costs.fp    = minChildFpCosts;
 
-	return mergeCosts;
+	LOG_DEBUG(topologicallosslog) << "\tthis slice is above best-effort, assign total costs of " << costs << std::endl;
+
+	(*_lossFunction)[slice->getId()] = costs;
+
+	return costs;
 }
 
 void
-TopologicalLoss::assignSplitCosts(boost::shared_ptr<SlicesTree::Node> node, double costs) {
+TopologicalLoss::traverseBelowBestEffort(boost::shared_ptr<SlicesTree::Node> node, NodeCosts costs) {
 
 	boost::shared_ptr<Slice> slice = node->getSlice();
 
@@ -111,6 +153,14 @@ TopologicalLoss::assignSplitCosts(boost::shared_ptr<SlicesTree::Node> node, doub
 
 	double k = node->getChildren().size();
 
+	// get the children's costs
+	NodeCosts childCosts;
+	childCosts.split = costs.split + _weightSplit*(k - 1)/k;
+	childCosts.merge = 0;
+	childCosts.fn    = costs.fn/k;
+	childCosts.fp    = 0;
+
+	// propagate costs downwards
 	foreach (boost::shared_ptr<SlicesTree::Node> child, node->getChildren())
-		assignSplitCosts(child, costs + (k - 1)/k);
+		traverseBelowBestEffort(child, childCosts);
 }
