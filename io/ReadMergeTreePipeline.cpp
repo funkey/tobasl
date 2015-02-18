@@ -66,7 +66,7 @@ ReadMergeTreePipeline::getLoss(std::string name) {
 
 	if (name == "contourdistance") {
 
-		LOG_USER(readmergetreepipelinelog) << "using slice loss ContourDistanceLoss" << std::endl;
+		LOG_USER(readmergetreepipelinelog) << "using best-effort loss ContourDistanceLoss" << std::endl;
 		loss = boost::make_shared<ContourDistanceLoss>();
 
 		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
@@ -74,7 +74,7 @@ ReadMergeTreePipeline::getLoss(std::string name) {
 
 	} else if (name == "overlap") {
 
-		LOG_USER(readmergetreepipelinelog) << "using slice loss OverlapLoss" << std::endl;
+		LOG_USER(readmergetreepipelinelog) << "using best-effort loss OverlapLoss" << std::endl;
 		loss = boost::make_shared<OverlapLoss>();
 
 		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
@@ -82,7 +82,7 @@ ReadMergeTreePipeline::getLoss(std::string name) {
 
 	} else if (name == "sloppy") {
 
-		LOG_USER(readmergetreepipelinelog) << "using slice loss SloppyGroundTruthLoss" << std::endl;
+		LOG_USER(readmergetreepipelinelog) << "using best-effort loss SloppyGroundTruthLoss" << std::endl;
 		loss = boost::make_shared<SloppyGroundTruthLoss>();
 
 		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
@@ -90,7 +90,7 @@ ReadMergeTreePipeline::getLoss(std::string name) {
 
 	} else if (name == "slicedistance") {
 
-		LOG_USER(readmergetreepipelinelog) << "using slice loss SliceDistanceLoss" << std::endl;
+		LOG_USER(readmergetreepipelinelog) << "using best-effort loss SliceDistanceLoss" << std::endl;
 		loss = boost::make_shared<SliceDistanceLoss>();
 
 		loss->setInput("slices", _mergeTreeReader->getOutput("slices"));
