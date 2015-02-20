@@ -26,6 +26,10 @@ util::ProgramOption optionVisualize(
 		util::_long_name        = "visualize",
 		util::_description_text = "Show a visualization of the component tree.");
 
+util::ProgramOption optionSpacedEdgeImage(
+		util::_long_name        = "spacedEdgeImage",
+		util::_description_text = "Indicate that the input image is a spaced edge image.");
+
 int main(int optionc, char** optionv) {
 
 	try {
@@ -45,7 +49,10 @@ int main(int optionc, char** optionv) {
 		pipeline::Process<ImageReader>            imageReader(optionMergeTreeImage.as<std::string>());
 		pipeline::Process<ComponentTreeExtractor<unsigned char> > componentTreeExtractor;
 
+		pipeline::Value<ComponentTreeExtractorParameters> parameters;
+		parameters->spacedEdgeImage = optionSpacedEdgeImage;
 		componentTreeExtractor->setInput("image", imageReader->getOutput());
+		componentTreeExtractor->setInput("parameters", parameters);
 
 		pipeline::Value<ComponentTree> componentTree = componentTreeExtractor->getOutput("component tree");
 
