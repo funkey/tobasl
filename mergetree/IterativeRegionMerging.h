@@ -83,6 +83,8 @@ private:
 	inline RagType::Edge nextMergeEdge() { float _; return nextMergeEdge(_); }
 	inline RagType::Edge nextMergeEdge(float& score);
 
+	inline void labelEdge(const std::vector<GridGraphType::Edge>& edge, unsigned int label);
+
 	void finishMergeTree();
 
 	GridGraphType                 _grid;
@@ -178,9 +180,7 @@ IterativeRegionMerging::mergeRegions(
 	RagType::Node c = _rag.addNode();
 
 	// label the edge pixels between a and b with c
-	for (std::vector<GridGraphType::Edge>::iterator i = _ragToGridEdges[edge].begin();
-	     i != _ragToGridEdges[edge].end(); i++)
-		 _mergeTree[std::min(_grid.u(*i), _grid.v(*i))] = _rag.id(c);
+	labelEdge(_ragToGridEdges[edge], _rag.id(c));
 
 	_parentNodes[a] = c;
 	_parentNodes[b] = c;
@@ -278,6 +278,46 @@ IterativeRegionMerging::nextMergeEdge(float& score) {
 	score = _edgeScores[next];
 
 	return next;
+}
+
+void
+IterativeRegionMerging::labelEdge(const std::vector<GridGraphType::Edge>& edge, unsigned int label) {
+
+	// label an edge (u,v) with l, such that
+	//
+	//   0 0 0
+	//   u 0 v
+	//   0 0 0
+	//
+	// becomes
+	//
+	//   0 l 0
+	//   u l v
+	//   0 l 0
+
+	for (std::vector<GridGraphType::Edge>::const_iterator i = edge.begin(); i != edge.end(); i++) {
+
+		GridGraphType::Node u = _grid.u(*i);
+		GridGraphType::Node v = _grid.v(*i);
+
+		GridGraphType::Node center = u+v;
+
+		_mergeTree[center] = label;
+
+		// x equal, vertical
+		if (u[0] == v[0]) {
+
+			_mergeTree[center + GridGraphType::Node(1, 0)] = label;
+			_mergeTree[center - GridGraphType::Node(1, 0)] = label;
+
+		// y equal, horizontal
+		} else if (u[1] == v[1]) {
+
+			_mergeTree[center + GridGraphType::Node(0, 1)] = label;
+			_mergeTree[center - GridGraphType::Node(0, 1)] = label;
+
+		}
+	}
 }
 
 #endif // MULTI2CUT_MERGETREE_ITERATIVE_REGION_MERGING_H__
