@@ -32,6 +32,16 @@ util::ProgramOption optionMergeTreeImage(
 		util::_description_text = "An image representing the merge tree.",
 		util::_default_value    = "mergetree.png");
 
+util::ProgramOption optionSuperpixelImage(
+		util::_long_name        = "superpixelImage",
+		util::_description_text = "Image with the initial superpixels.",
+		util::_default_value    = "superpixels.png");
+
+util::ProgramOption optionSuperpixelWithBordersImage(
+		util::_long_name        = "superpixelWithBordersImage",
+		util::_description_text = "Image with the initial superpixels.",
+		util::_default_value    = "superpixels_borders.png");
+
 util::ProgramOption optionSlicSuperpixels(
 		util::_long_name        = "slicSuperpixels",
 		util::_description_text = "Use SLIC superpixels instead of watersheds to obtain initial regions.");
@@ -119,6 +129,29 @@ int main(int optionc, char** optionv) {
 					vigra::WatershedOptions().seedOptions(vigra::SeedOptions().extendedMinima()));
 
 			LOG_USER(logger::out) << "found " << maxLabel << " watershed regions" << std::endl;
+
+			vigra::exportImage(
+					initialRegions,
+					vigra::ImageExportInfo(optionSuperpixelImage.as<std::string>().c_str()));
+
+			vigra::MultiArray<2, int> initialRegionsWithBorders(image.shape());
+			initialRegionsWithBorders = initialRegions;
+
+			for (unsigned int y = 0; y < initialRegions.height() - 1; y++)
+				for (unsigned int x = 0; x < initialRegions.width() - 1; x++) {
+
+					float value = initialRegions(x, y);
+					float right = initialRegions(x+1, y);
+					float down  = initialRegions(x, y+1);
+					float diag  = initialRegions(x+1, y+1);
+
+					if (value != right || value != down || value != diag)
+						initialRegionsWithBorders(x, y) = 0;
+				}
+
+			vigra::exportImage(
+					initialRegionsWithBorders,
+					vigra::ImageExportInfo(optionSuperpixelWithBordersImage.as<std::string>().c_str()));
 		}
 
 		// extract merge tree
