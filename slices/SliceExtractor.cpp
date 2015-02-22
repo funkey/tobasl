@@ -29,12 +29,8 @@ util::ProgramOption optionMaxSliceMerges(
 		util::_description_text = "Limit the height of the slice component tree, counting the height from the leafs.",
 		util::_default_value    = 3);
 
-util::ProgramOption optionSpacedEdgeImage(
-		util::_long_name        = "spacedEdgeImage",
-		util::_description_text = "Indicate that the slice maps are spaced edge images (if they are, you would know).");
-
 template <typename Precision>
-SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample) :
+SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample, bool spacedEdgeImage) :
 	_componentTreeExtractor(boost::make_shared<ComponentTreeExtractor<Precision> >()),
 	_defaultComponentTreeExtractorParameters(boost::make_shared<ComponentTreeExtractorParameters>()),
 	_downSampler(boost::make_shared<ComponentTreeDownSampler>()),
@@ -49,7 +45,7 @@ SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample)
 	_defaultComponentTreeExtractorParameters->darkToBright    =  optionInvertSliceMaps;
 	_defaultComponentTreeExtractorParameters->minSize         =  optionMinSliceSize;
 	_defaultComponentTreeExtractorParameters->maxSize         =  optionMaxSliceSize;
-	_defaultComponentTreeExtractorParameters->spacedEdgeImage =  optionSpacedEdgeImage;
+	_defaultComponentTreeExtractorParameters->spacedEdgeImage =  spacedEdgeImage;
 
 	LOG_DEBUG(sliceextractorlog)
 			<< "extracting slices with min size " << optionMinSliceSize.as<int>()

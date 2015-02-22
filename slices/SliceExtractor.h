@@ -33,7 +33,7 @@ public:
 	 *              Do not extract slices that are single children of their 
 	 *              parents in the component tree.
 	 */
-	SliceExtractor(unsigned int section, bool downsample);
+	SliceExtractor(unsigned int section, bool downsample, bool spacedEdgeImage = false);
 
 private:
 
