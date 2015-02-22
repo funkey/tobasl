@@ -16,8 +16,8 @@ private:
 
 	void updateOutputs() {}
 
-	pipeline::Process<ImageReader>                    _imageReader;
-	pipeline::Process<SliceExtractor<unsigned char> > _sliceExtractor;
+	pipeline::Process<ImageReader>                     _imageReader;
+	pipeline::Process<SliceExtractor<unsigned short> > _sliceExtractor;
 };
 
 #endif // MULTI2CUT_IO_MERGE_TREE_READER_H__
