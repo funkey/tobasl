@@ -140,7 +140,7 @@ int main(int optionc, char** optionv) {
 			unsigned int maxLabel = vigra::watershedsMultiArray(
 					image,
 					initialRegions,
-					vigra::DirectNeighborhood,
+					vigra::IndirectNeighborhood,
 					vigra::WatershedOptions().seedOptions(vigra::SeedOptions().extendedMinima()));
 
 			LOG_USER(logger::out) << "found " << maxLabel << " watershed regions" << std::endl;
