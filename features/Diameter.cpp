@@ -31,7 +31,7 @@ Diameter::operator()(const ConnectedComponent& component) {
 	for (unsigned int y = 0; y < image.height(); y++) {
 		if (image(x, y) == 1) {
 
-			anchor = vigra::Shape2(x + component.getBoundingBox().minX, y + component.getBoundingBox().minY);
+			anchor = vigra::Shape2(x, y);
 		}
 	}
 
