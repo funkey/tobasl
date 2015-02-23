@@ -2,6 +2,7 @@
 #define MULTI2CUT_MERGETREE_ITERATIVE_REGION_MERGING_H__
 
 #include <iostream>
+#include <fstream>
 #include <util/Logger.h>
 #include <util/cont_map.hpp>
 #include <util/assert.h>
@@ -21,6 +22,12 @@ public:
 	typedef vigra::AdjacencyListGraph RagType;
 
 	IterativeRegionMerging(vigra::MultiArrayView<2, int> initialRegions);
+
+	/**
+	 * Store the initial (before calling createMergeTree) or final RAG.
+	 */
+	template <typename ScoringFunction>
+	void storeRag(std::string filename, ScoringFunction& scoringFunction);
 
 	template <typename ScoringFunction>
 	void createMergeTree(ScoringFunction& scoringFunction);
@@ -100,6 +107,21 @@ private:
 
 	MergeEdgesType _mergeEdges;
 };
+
+template <typename ScoringFunction>
+void
+IterativeRegionMerging::storeRag(std::string filename, ScoringFunction& scoringFunction) {
+
+	std::ofstream file(filename.c_str());
+
+	for (RagType::EdgeIt edge(_rag); edge != lemon::INVALID; ++edge) {
+
+		unsigned int u = _rag.id(_rag.u(*edge));
+		unsigned int v = _rag.id(_rag.v(*edge));
+
+		file << u << "\t" << v << "\t" << scoringFunction(*edge, _ragToGridEdges[*edge]) << std::endl;
+	}
+}
 
 template <typename ScoringFunction>
 void

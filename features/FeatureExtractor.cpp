@@ -123,6 +123,11 @@ FeatureExtractor::updateOutputs() {
 		// the bounding box of the slice in the raw image
 		const util::rect<unsigned int>& sliceBoundingBox = slice->getComponent()->getBoundingBox();
 
+		LOG_DEBUG(featureextractorlog) << "extracting features for slice " << slice->getId() << std::endl;
+		LOG_ALL(featureextractorlog) << "slice bounding box: " << sliceBoundingBox << std::endl;
+		foreach (const util::point<unsigned int>& p, slice->getComponent()->getPixels())
+			LOG_ALL(featureextractorlog) << "  " << p << std::endl;
+
 		// a view to the raw image for the slice bounding box
 		typedef vigra::MultiArrayView<2, float>::difference_type Shape;
 		vigra::MultiArrayView<2, float> rawSliceImage =

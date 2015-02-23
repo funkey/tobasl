@@ -42,6 +42,10 @@ util::ProgramOption optionSuperpixelWithBordersImage(
 		util::_description_text = "Image with the initial superpixels.",
 		util::_default_value    = "superpixels_borders.png");
 
+util::ProgramOption optionRagFile(
+		util::_long_name        = "ragFile",
+		util::_description_text = "A file to write the region adjacency graph for the initial superpixels.");
+
 util::ProgramOption optionSlicSuperpixels(
 		util::_long_name        = "slicSuperpixels",
 		util::_description_text = "Use SLIC superpixels instead of watersheds to obtain initial regions.");
@@ -158,6 +162,10 @@ int main(int optionc, char** optionv) {
 		IterativeRegionMerging merging(initialRegions);
 
 		MedianEdgeIntensity mei(image);
+
+		// create the RAG description for the median edge intensities
+		if (optionRagFile)
+			merging.storeRag(optionRagFile.as<std::string>(), mei);
 
 		if (optionMergeSmallRegionsFirst) {
 
