@@ -14,6 +14,7 @@
 #include <vigra/impex.hxx>
 #include <vigra/multi_array.hxx>
 #include <vigra/slic.hxx>
+#include <vigra/multi_convolution.hxx>
 #include <mergetree/IterativeRegionMerging.h>
 #include <mergetree/MedianEdgeIntensity.h>
 #include <mergetree/SmallFirst.h>
@@ -45,6 +46,10 @@ util::ProgramOption optionSuperpixelWithBordersImage(
 util::ProgramOption optionRagFile(
 		util::_long_name        = "ragFile",
 		util::_description_text = "A file to write the region adjacency graph for the initial superpixels.");
+
+util::ProgramOption optionSmooth(
+		util::_long_name        = "smooth",
+		util::_description_text = "Smooth the input image with a Gaussian kernel of the given stddev.");
 
 util::ProgramOption optionSlicSuperpixels(
 		util::_long_name        = "slicSuperpixels",
@@ -109,6 +114,12 @@ int main(int optionc, char** optionv) {
 
 		// read image
 		vigra::MultiArray<2, float> image = readImage(optionSourceImage);
+
+		if (optionSmooth)
+			vigra::gaussianSmoothMultiArray(
+					image,
+					image,
+					optionSmooth.as<double>());
 
 		// perform watersheds or find SLIC superpixels
 		vigra::MultiArray<2, int> initialRegions(image.shape());
