@@ -1,4 +1,5 @@
 #include <vigra/polygon.hxx>
+#include <vigra/impex.hxx>
 #include <imageprocessing/ConnectedComponent.h>
 #include <util/Logger.h>
 #include "Diameter.h"
@@ -25,10 +26,18 @@ Diameter::operator()(const ConnectedComponent& component) {
 	const ConnectedComponent::bitmap_type& image = component.getBitmap();
 
 	// find an anchor point
-	util::point<unsigned int> firstPixel =
-			*component.getPixels().first -
-			component.getBoundingBox().upperLeft();
-	vigra::Shape2 anchor(firstPixel.x, firstPixel.y);
+	vigra::Shape2 anchor;
+	for (unsigned int x = 0; x < image.width(); x++)
+	for (unsigned int y = 0; y < image.height(); y++) {
+		if (image(x, y) == 1) {
+
+			anchor = vigra::Shape2(x + component.getBoundingBox().minX, y + component.getBoundingBox().minY);
+		}
+	}
+
+	vigra::exportImage(
+			image,
+			vigra::ImageExportInfo("slice.png"));
 
 	LOG_ALL(diameterlog)
 			<< "anchor point is "

@@ -7,7 +7,7 @@ util::ProgramOption optionSpacedEdgeImage(
 
 MergeTreeReader::MergeTreeReader(std::string mergeTreeImage) :
 	_imageReader(mergeTreeImage),
-	_sliceExtractor(0, true /* downsample */, optionSpacedEdgeImage) {
+	_sliceExtractor(0, true /* downsample */, false /* brightToDark */, optionSpacedEdgeImage) {
 
 	registerOutput(_sliceExtractor->getOutput("slices"), "slices");
 	registerOutput(_sliceExtractor->getOutput("conflict sets"), "conflict sets");
