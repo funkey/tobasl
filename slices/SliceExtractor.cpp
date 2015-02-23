@@ -9,11 +9,6 @@
 
 static logger::LogChannel sliceextractorlog("sliceextractorlog", "[SliceExtractor] ");
 
-util::ProgramOption optionInvertSliceMaps(
-		util::_long_name        = "invertSliceMaps",
-		util::_description_text = "Invert the meaning of the slice map. The default "
-		                          "(not inverting) is: bright area = neuron hypotheses.");
-
 util::ProgramOption optionMinSliceSize(
 		util::_long_name        = "minSliceSize",
 		util::_description_text = "The minimal size of a neuron slice in pixels.",
@@ -30,7 +25,7 @@ util::ProgramOption optionMaxSliceMerges(
 		util::_default_value    = 3);
 
 template <typename Precision>
-SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample, bool spacedEdgeImage) :
+SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample, bool brightToDark, bool spacedEdgeImage) :
 	_componentTreeExtractor(boost::make_shared<ComponentTreeExtractor<Precision> >()),
 	_defaultComponentTreeExtractorParameters(boost::make_shared<ComponentTreeExtractorParameters>()),
 	_downSampler(boost::make_shared<ComponentTreeDownSampler>()),
@@ -42,7 +37,7 @@ SliceExtractor<Precision>::SliceExtractor(unsigned int section, bool downsample,
 	registerOutput(_converter->getOutput("conflict sets"), "conflict sets");
 
 	// set default componentTreeExtractor parameters from program options
-	_defaultComponentTreeExtractorParameters->darkToBright    =  optionInvertSliceMaps;
+	_defaultComponentTreeExtractorParameters->darkToBright    =  !brightToDark;
 	_defaultComponentTreeExtractorParameters->minSize         =  optionMinSliceSize;
 	_defaultComponentTreeExtractorParameters->maxSize         =  optionMaxSliceSize;
 	_defaultComponentTreeExtractorParameters->spacedEdgeImage =  spacedEdgeImage;

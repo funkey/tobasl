@@ -32,8 +32,15 @@ public:
 	 * @param downsample
 	 *              Do not extract slices that are single children of their 
 	 *              parents in the component tree.
+	 *
+	 * @param brightToDark
+	 *              Extract slices starting from dark regions.
+	 *
+	 * @param spacedEdgeImage
+	 *              Indicate that the input image contains a spaced edge image 
+	 *              (which represents edges with inter-pixel values).
 	 */
-	SliceExtractor(unsigned int section, bool downsample, bool spacedEdgeImage = false);
+	SliceExtractor(unsigned int section, bool downsample, bool brightToDark = false, bool spacedEdgeImage = false);
 
 private:
 

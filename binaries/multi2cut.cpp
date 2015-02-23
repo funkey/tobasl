@@ -196,7 +196,7 @@ int main(int optionc, char** optionv) {
 		std::vector<pipeline::Process<ReadMergeTreePipeline> > mergeTreeReaders;
 
 		// create a ground truth slice extractor, if ground truth was given
-		pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false);
+		pipeline::Process<SliceExtractor<unsigned char> > gtSliceExtractor(0, false /* downsample */, true /* brightToDark */);
 		if (optionGroundTruth) {
 
 			pipeline::Process<ImageReader> groundTruthReader(optionGroundTruth.as<std::string>());
