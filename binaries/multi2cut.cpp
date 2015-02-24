@@ -65,6 +65,10 @@ util::ProgramOption optionSliceLoss(
 		                          "'topological' (default), 'hamming', 'contourdistance', 'overlap', and 'slicedistance'.",
 		util::_default_value    = "topological");
 
+util::ProgramOption optionDumpSlices(
+		util::_long_name        = "dumpSlices",
+		util::_description_text = "Store images and offset positions of all extracted candidates (slices).");
+
 boost::shared_ptr<pipeline::SimpleProcessNode<> >
 getLoss(
 		std::string name,
@@ -348,10 +352,13 @@ int main(int optionc, char** optionv) {
 			solutionWriter->setInput("solution", bestEffortReconstructor->getOutput());
 			solutionWriter->write();
 
-			// store slices and their offsets
-			pipeline::Process<SlicesWriter> slicesWriter("output_images/slices");
-			slicesWriter->setInput(slicesCollector->getOutput("slices"));
-			slicesWriter->write();
+			if (optionDumpSlices) {
+
+				// store slices and their offsets
+				pipeline::Process<SlicesWriter> slicesWriter("output_images/slices");
+				slicesWriter->setInput(slicesCollector->getOutput("slices"));
+				slicesWriter->write();
+			}
 
 		} else {
 
