@@ -35,10 +35,6 @@ Diameter::operator()(const ConnectedComponent& component) {
 		}
 	}
 
-	vigra::exportImage(
-			image,
-			vigra::ImageExportInfo("slice.png"));
-
 	LOG_ALL(diameterlog)
 			<< "anchor point is "
 			<< anchor
