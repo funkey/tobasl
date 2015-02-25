@@ -43,10 +43,12 @@ int main(int argc, char** argv) {
 
 	unsigned int width  = 0;
 	unsigned int height = 0;
+	std::string pixelType;
 	for (int arg = firstInputImage; arg <= lastInputImage; arg++) {
 
 		// get information about the image to read
 		vigra::ImageImportInfo info(argv[arg]);
+		pixelType = info.getPixelType();
 
 		// create new image
 		images.push_back(vigra::MultiArray<2, float>(vigra::Shape2(info.width(), info.height())));
@@ -92,5 +94,8 @@ int main(int argc, char** argv) {
 		offset += images[i].width() + (addSeperator ? 1 : 0);
 	}
 
-	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]));
+	// vigra bug?
+	if (pixelType == "BILEVEL")
+		pixelType = "UINT8";
+	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]).setPixelType(pixelType.c_str()));
 }
