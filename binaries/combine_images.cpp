@@ -31,6 +31,9 @@ int main(int argc, char** argv) {
 	int  lastInputImage   = argc - 2;
 	int  numInputImages   = lastInputImage - firstInputImage + 1;
 
+	// to be ready for spaced edge images
+	int seperatorWidth = 2;
+
 	if (numInputImages <= 1) {
 
 		std::cerr << "at least two input images have to be given" << std::endl;
@@ -43,12 +46,14 @@ int main(int argc, char** argv) {
 
 	unsigned int width  = 0;
 	unsigned int height = 0;
-	std::string pixelType;
+	std::string inputPixelType;
+
 	for (int arg = firstInputImage; arg <= lastInputImage; arg++) {
 
 		// get information about the image to read
 		vigra::ImageImportInfo info(argv[arg]);
-		pixelType = info.getPixelType();
+		if (inputPixelType.empty())
+			inputPixelType = info.getPixelType();
 
 		// create new image
 		images.push_back(vigra::MultiArray<2, float>(vigra::Shape2(info.width(), info.height())));
@@ -61,7 +66,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (addSeperator)
-		width += numInputImages - 1;
+		width += seperatorWidth*(numInputImages - 1);
 
 	vigra::MultiArray<2, float> combined(vigra::Shape2(width, height));
 
@@ -75,6 +80,8 @@ int main(int argc, char** argv) {
 			images[i].minmax(&_, &max);
 			maxIntensity = std::max(max, maxIntensity);
 		}
+
+		std::cout << "adding separators with intensity " << maxIntensity << std::endl;
 
 		// intialize combined image with max intensity
 		combined = maxIntensity;
@@ -91,11 +98,12 @@ int main(int argc, char** argv) {
 				vigra::Shape2(offset, 0),
 				vigra::Shape2(offset + images[i].width(), height)) = images[i];
 
-		offset += images[i].width() + (addSeperator ? 1 : 0);
+		offset += images[i].width() + (addSeperator ? seperatorWidth : 0);
 	}
 
-	// vigra bug?
-	if (pixelType == "BILEVEL")
-		pixelType = "UINT8";
-	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]).setPixelType(pixelType.c_str()));
+	float min, max;
+	combined.minmax(&min, &max);
+	std::cout << "range of combined image: " << min << " - " << max << std::endl;
+
+	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]).setPixelType(inputPixelType.c_str()));
 }
