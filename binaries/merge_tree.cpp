@@ -217,7 +217,9 @@ int main(int optionc, char** optionv) {
 
 		LOG_USER(logger::out) << "writing merge tree..." << std::endl;
 
-		vigra::exportImage(merging.getMergeTree(), vigra::ImageExportInfo(optionMergeTreeImage.as<std::string>().c_str()));
+		vigra::exportImage(
+				merging.getMergeTree(),
+				vigra::ImageExportInfo(optionMergeTreeImage.as<std::string>().c_str()).setPixelType("FLOAT"));
 
 	} catch (Exception& e) {
 
