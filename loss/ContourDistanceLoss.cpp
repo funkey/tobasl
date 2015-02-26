@@ -45,6 +45,8 @@ ContourDistanceLoss::updateOutputs() {
 		_lossFunction->setConstant(constant);
 	}
 
+	_sliceDistance.clearCache();
+
 	LOG_USER(contourdistancelosslog) << "done." << std::endl;
 }
 
