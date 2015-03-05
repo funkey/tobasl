@@ -1,4 +1,5 @@
 #include <iostream>
+#include <map>
 #include <vigra/impex.hxx>
 #include <vigra/multi_array.hxx>
 
@@ -68,6 +69,21 @@ int main(int argc, char** argv) {
 					changed = true;
 				}
 			}
+	}
+
+	// remove regions that are too large
+	std::map<float, unsigned int> regionSizes;
+	for (unsigned int y = 0; y < labels.height(); y++)
+		for (unsigned int x = 0; x < labels.width(); x++)
+			regionSizes[labels(x, y)]++;
+
+	for (std::map<float, unsigned int>::const_iterator i = regionSizes.begin(); i != regionSizes.end(); i++) {
+
+		if (i->second >= 10000)
+			for (unsigned int y = 0; y < labels.height(); y++)
+				for (unsigned int x = 0; x < labels.width(); x++)
+					if (labels(x, y) == i->first)
+						labels(x, y) = 0;
 	}
 
 	vigra::exportImage(vigra::srcImageRange(labels), vigra::ImageExportInfo(outFile));
