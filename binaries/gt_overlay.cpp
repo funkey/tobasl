@@ -117,11 +117,11 @@ int main(int argc, char** argv) {
 
 	vigra::MultiArray<2, vigra::TinyVector<unsigned char, 3> > combined(vigra::Shape2(info.width(), info.height()));
 
-	// amount of colorization
-	double alpha = 0.75;
-
 	for (unsigned int y = 0; y < labels.height(); y++)
 		for (unsigned int x = 0; x < labels.width(); x++) {
+
+			// amount of colorization
+			double alpha = 0.05;
 
 			float        intensity = raw(x, y);
 			unsigned int label     = labels(x, y);
@@ -132,6 +132,15 @@ int main(int argc, char** argv) {
 
 			if (label != 0 || darkBackground)
 				idToRgb(label, r, g, b);
+			else {
+
+				// sort of red
+				r = 210;
+				g = 20;
+				b = 45;
+
+				alpha = 1.0;
+			}
 
 			combined(x, y)[0] = (1.0 - alpha)*intensity + alpha*intensity*normFactor*r;
 			combined(x, y)[1] = (1.0 - alpha)*intensity + alpha*intensity*normFactor*g;
