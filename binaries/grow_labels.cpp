@@ -6,12 +6,12 @@
 void printUsage() {
 
 	std::cout << std::endl;
-	std::cout << "grow_labels <label_image> <out>" << std::endl;
+	std::cout << "grow_labels <label_image> <out> <max_threshold> <min_threshold>" << std::endl;
 }
 
 int main(int argc, char** argv) {
 
-	if (argc != 3) {
+	if (argc != 5) {
 
 		printUsage();
 
@@ -19,6 +19,9 @@ int main(int argc, char** argv) {
 	}
 	char* labelFile = argv[1];
 	char* outFile   = argv[2];
+
+	int maxThreshold = atoi(argv[3]);
+	int minThreshold = atoi(argv[4]);
 
 	vigra::ImageImportInfo info(labelFile);
 	vigra::MultiArray<2, float> labels(vigra::Shape2(info.width(), info.height()));
@@ -71,7 +74,7 @@ int main(int argc, char** argv) {
 			}
 	}
 
-	// remove regions that are too large
+	// remove regions that are too large or too small
 	std::map<float, unsigned int> regionSizes;
 	for (unsigned int y = 0; y < labels.height(); y++)
 		for (unsigned int x = 0; x < labels.width(); x++)
@@ -79,7 +82,7 @@ int main(int argc, char** argv) {
 
 	for (std::map<float, unsigned int>::const_iterator i = regionSizes.begin(); i != regionSizes.end(); i++) {
 
-		if (i->second >= 10000)
+		if (i->second >= maxThreshold || i->second <= minThreshold)
 			for (unsigned int y = 0; y < labels.height(); y++)
 				for (unsigned int x = 0; x < labels.width(); x++)
 					if (labels(x, y) == i->first)

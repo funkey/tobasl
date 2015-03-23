@@ -117,22 +117,43 @@ int main(int argc, char** argv) {
 
 	vigra::MultiArray<2, vigra::TinyVector<unsigned char, 3> > combined(vigra::Shape2(info.width(), info.height()));
 
-	for (unsigned int y = 0; y < labels.height(); y++)
-		for (unsigned int x = 0; x < labels.width(); x++) {
+	int boundaryWidth = 2;
+
+	for (int y = 0; y < labels.height(); y++)
+		for (int x = 0; x < labels.width(); x++) {
+
+			bool isBoundary = false;
 
 			// amount of colorization
-			double alpha = 0.05;
+			double alpha = 0.3;
 
 			float        intensity = raw(x, y);
 			unsigned int label     = labels(x, y);
+
+			int mindx = std::max(0, x - boundaryWidth);
+			int maxdx = std::min((int)labels.width() - 1, x + boundaryWidth);
+			int mindy = std::max(0, y - boundaryWidth);
+			int maxdy = std::min((int)labels.height() - 1, y + boundaryWidth);
+
+			if (label == 0)
+				for (int dy = mindy; dy <= maxdy; dy++)
+					for (int dx = mindx; dx <= maxdx; dx++) {
+
+						if (abs(x - dx) + abs(y - dy) > boundaryWidth)
+							continue;
+
+						if (labels(dx, dy) != label) {
+
+							isBoundary = true;
+							break;
+						}
+					}
 
 			unsigned char r = 255;
 			unsigned char g = 255;
 			unsigned char b = 255;
 
-			if (label != 0 || darkBackground)
-				idToRgb(label, r, g, b);
-			else {
+			if (isBoundary) {
 
 				// sort of red
 				r = 210;
@@ -140,11 +161,14 @@ int main(int argc, char** argv) {
 				b = 45;
 
 				alpha = 1.0;
+			} else {
+
+				idToRgb(label, r, g, b);
 			}
 
-			combined(x, y)[0] = (1.0 - alpha)*intensity + alpha*intensity*normFactor*r;
-			combined(x, y)[1] = (1.0 - alpha)*intensity + alpha*intensity*normFactor*g;
-			combined(x, y)[2] = (1.0 - alpha)*intensity + alpha*intensity*normFactor*b;
+			combined(x, y)[0] = (1.0 - alpha)*intensity + alpha*r;
+			combined(x, y)[1] = (1.0 - alpha)*intensity + alpha*g;
+			combined(x, y)[2] = (1.0 - alpha)*intensity + alpha*b;
 		}
 
 	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(outFile));

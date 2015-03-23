@@ -3,3 +3,4 @@ define_module(multi2cut BINARY SOURCES multi2cut.cpp LINKS slices features io im
 define_module(combine_images BINARY SOURCES combine_images.cpp LINKS vigra-git)
 define_module(gt_overlay BINARY SOURCES gt_overlay.cpp LINKS vigra-git)
 define_module(grow_labels BINARY SOURCES grow_labels.cpp LINKS vigra-git)
+define_module(shrink_labels BINARY SOURCES shrink_labels.cpp LINKS vigra-git)
