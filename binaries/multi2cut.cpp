@@ -24,6 +24,7 @@
 #include <inference/Reconstructor.h>
 #include <loss/TopologicalLoss.h>
 #include <loss/HammingLoss.h>
+#include <loss/CoverLoss.h>
 #include <loss/SliceDistanceLoss.h>
 #include <loss/ContourDistanceLoss.h>
 #include <loss/OverlapLoss.h>
@@ -62,7 +63,7 @@ util::ProgramOption optionWriteLearningProblem(
 util::ProgramOption optionSliceLoss(
 		util::_long_name        = "sliceLoss",
 		util::_description_text = "The candidate loss function to use as Δ for learning. Valid values are: "
-		                          "'topological' (default), 'hamming', 'contourdistance', 'overlap', and 'slicedistance'.",
+		                          "'topological' (default), 'hamming', 'cover', 'contourdistance', 'overlap', and 'slicedistance'.",
 		util::_default_value    = "topological");
 
 util::ProgramOption optionDumpSlices(
@@ -110,6 +111,14 @@ getLoss(
 
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 		loss->setInput("best effort", bestEffortReconstructor->getOutput("reconstruction"));
+
+	} else if (name == "cover") {
+
+		LOG_USER(out) << "[main] using slice loss CoverLoss" << std::endl;
+		loss = boost::make_shared<CoverLoss>();
+
+		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
 
 	} else if (name == "contourdistance") {
 
