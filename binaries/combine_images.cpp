@@ -5,13 +5,15 @@
 void printUsage() {
 
 	std::cout << std::endl;
-	std::cout << "combine_images [-s] <image_1> ... <image_n> <out>" << std::endl;
+	std::cout << "combine_images [-s|-s0] [-l] <image_1> ... <image_n> <out>" << std::endl;
 	std::cout << std::endl;
 	std::cout << "  -s  Put a seperating line between each pair of images." << std::endl;
 	std::cout << "      The intensity of the line will be the maximal intensity " << std::endl;
 	std::cout << "      found in any input image." << std::endl;
 	std::cout << "  -s0 Put a seperating line between each pair of images." << std::endl;
 	std::cout << "      The intensity of the line will be the 0." << std::endl;
+	std::cout << "  -l  Assume that the images contain label ids. When combining," << std::endl;
+	std::cout << "      make sure the ids are still unique." << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -27,7 +29,14 @@ int main(int argc, char** argv) {
 	bool addMaxSeperator  = (std::string(argv[1]) == "-s");
 	bool addZeroSeperator = (std::string(argv[1]) == "-s0");
 	bool addSeperator     = addMaxSeperator || addZeroSeperator;
-	int  firstInputImage  = (addSeperator ? 2 : 1);
+
+	bool labelImages = (std::string(argv[addSeperator?2:1]) == "-l");
+
+	int  firstInputImage = 1;
+	if (addSeperator)
+		firstInputImage++;
+	if (labelImages)
+		firstInputImage++;
 	int  lastInputImage   = argc - 2;
 	int  numInputImages   = lastInputImage - firstInputImage + 1;
 
@@ -40,6 +49,7 @@ int main(int argc, char** argv) {
 	unsigned int height = 0;
 	std::string inputPixelType;
 
+	float labelOffset = 0;
 	for (int arg = firstInputImage; arg <= lastInputImage; arg++) {
 
 		// get information about the image to read
@@ -52,6 +62,22 @@ int main(int argc, char** argv) {
 
 		// read image
 		importImage(info, vigra::destImage(images.back()));
+
+		if (labelImages) {
+
+			// get the max value in this image
+			float min, max;
+			images.back().minmax(&min, &max);
+
+			// add the current label offset
+			for (int y = 0; y < info.height(); y++)
+				for (int x = 0; x < info.width(); x++)
+					if (images.back()(x, y) != 0)
+						images.back()(x, y) += labelOffset;
+
+			// increase the label offset
+			labelOffset += max;
+		}
 
 		width += info.width();
 		height = info.height();
