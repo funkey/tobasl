@@ -34,14 +34,6 @@ int main(int argc, char** argv) {
 	// to be ready for spaced edge images
 	int seperatorWidth = 2;
 
-	if (numInputImages <= 1) {
-
-		std::cerr << "at least two input images have to be given" << std::endl;
-		printUsage();
-
-		return 1;
-	}
-
 	std::vector<vigra::MultiArray<2, float> > images;
 
 	unsigned int width  = 0;
