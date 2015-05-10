@@ -25,6 +25,7 @@
 #include <loss/TopologicalLoss.h>
 #include <loss/HammingLoss.h>
 #include <loss/CoverLoss.h>
+#include <loss/RandLoss.h>
 #include <loss/SliceDistanceLoss.h>
 #include <loss/ContourDistanceLoss.h>
 #include <loss/OverlapLoss.h>
@@ -119,6 +120,25 @@ getLoss(
 
 		loss->setInput("slices", mergeTreeReader->getOutput("slices"));
 		loss->setInput("ground truth", gtSliceExtractor->getOutput("slices"));
+
+	} else if (name == "rand") {
+
+		if (multiMergeTrees)
+			UTIL_THROW_EXCEPTION(
+					UsageError,
+					"The rand loss can only be used with single merge trees.");
+
+		if (!bestEffortReconstructor)
+			UTIL_THROW_EXCEPTION(
+					UsageError,
+					"The rand loss needs a best-effort solution (and can therefore not be used to find one).");
+
+		LOG_USER(out) << "[main] using slice loss RandLoss" << std::endl;
+		loss = boost::make_shared<RandLoss>();
+
+		// only for SliceTrees!
+		loss->addInput("slices", mergeTreeReader->getOutput("slices"));
+		loss->addInput("best effort", bestEffortReconstructor->getOutput("reconstruction"));
 
 	} else if (name == "contourdistance") {
 
