@@ -119,9 +119,18 @@ int main(int argc, char** argv) {
 		offset += images[i].width() + (addSeperator ? seperatorWidth : 0);
 	}
 
+	std::string outputPixelType = inputPixelType;
+	// workaround: bilevel images get scrumbled on export
+	if (outputPixelType == "BILEVEL")
+		outputPixelType = "FLOAT";
+
 	float min, max;
 	combined.minmax(&min, &max);
 	std::cout << "range of combined image: " << min << " - " << max << std::endl;
+	std::cout
+			<< "input pixel type was " << inputPixelType
+			<< ", saving with pixel type " << outputPixelType
+			<< std::endl;
 
-	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]).setPixelType(inputPixelType.c_str()));
+	vigra::exportImage(vigra::srcImageRange(combined), vigra::ImageExportInfo(argv[argc-1]).setPixelType(outputPixelType.c_str()));
 }
