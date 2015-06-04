@@ -191,7 +191,7 @@ FeatureExtractor::updateOutputs() {
 				RegionFeatures<2, float, bool>::Parameters boundaryParams;
 				if (optionNoCoordinatesStatistics)
 					boundaryParams.statisticsParameters.computeCoordinateStatistics = false;
-				RegionFeatures<2, float, bool> boundaryFeatures(probabilitySliceImage, labelImage, boundaryParams);
+				RegionFeatures<2, float, bool> boundaryFeatures(probabilitySliceImage, boundaryImage, boundaryParams);
 				boundaryFeatures.fill(adaptor);
 			}
 		}
